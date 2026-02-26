@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHUMI — Mycelial Mascot Reveal</title>
+    <title>shumi</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0D0D0D; overflow: hidden; font-family: 'Courier New', monospace; }
@@ -66,7 +66,7 @@
     <!-- Composite for recording -->
     <canvas id="composite"></canvas>
 
-    <div id="status">Loading...</div>
+    <div id="status" style="display:none"></div>
     <div id="controls">
         <button class="btn" onclick="restart()">New Seed</button>
         <button class="btn" id="rec-btn" onclick="toggleRecord()">● Record</button>
@@ -576,7 +576,6 @@ function frame() {
         compCtx.drawImage(mascotCanvas, mx, my);
     }
 
-    statusEl.textContent = `Seed ${seed} · BG ${bgAgents.length} + Mascot ${msAgents.length} agents`;
     requestAnimationFrame(frame);
 }
 
