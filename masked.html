@@ -272,7 +272,7 @@ const BG = {
     trailBright: 1.2,
     agentGlow: 0.25,
     spawnR: 15,
-    stepsPerFrame: 4,
+    stepsPerFrame: 3,
     spawnRate: 60,
     initialBatch: 1500,
     foodCount: 12,
@@ -292,7 +292,7 @@ const MS = {
     trailBright: 2.8,
     agentGlow: 0.7,
     spawnR: 10,
-    stepsPerFrame: 4,
+    stepsPerFrame: 3,
     spawnRate: 50,
     initialBatch: 1200,
 };
@@ -408,10 +408,26 @@ function buildMask() {
             if (dist[i] > 0) dist[i] = Math.min(dist[i], Math.min(dist[i+1], dist[i+MSIZE]) + 1);
         }
     }
-    // Normalize: 0 at edge, 1.0 at 30+ pixels inside
+    // Normalize with per-pixel noise so dissolution is ragged, not uniform
     let edgeFadeDepth = 30;
-    for (let i = 0; i < MSIZE * MSIZE; i++) {
-        edgeDistMap[i] = Math.min(1, dist[i] / edgeFadeDepth);
+    // Low-frequency noise: sample every 8px, interpolate between
+    let noiseGrid = 8;
+    let nw = Math.ceil(MSIZE / noiseGrid) + 1;
+    let nh = Math.ceil(MSIZE / noiseGrid) + 1;
+    let noise = new Float32Array(nw * nh);
+    for (let i = 0; i < noise.length; i++) noise[i] = rng() * 0.6 + 0.7; // 0.7 to 1.3
+    for (let y = 0; y < MSIZE; y++) {
+        for (let x = 0; x < MSIZE; x++) {
+            let i = y * MSIZE + x;
+            // Bilinear noise lookup
+            let gx = x / noiseGrid, gy = y / noiseGrid;
+            let gx0 = Math.floor(gx), gy0 = Math.floor(gy);
+            let fx = gx - gx0, fy = gy - gy0;
+            let gx1 = Math.min(gx0 + 1, nw - 1), gy1 = Math.min(gy0 + 1, nh - 1);
+            let n = noise[gy0 * nw + gx0] * (1-fx)*(1-fy) + noise[gy0 * nw + gx1] * fx*(1-fy)
+                  + noise[gy1 * nw + gx0] * (1-fx)*fy + noise[gy1 * nw + gx1] * fx*fy;
+            edgeDistMap[i] = Math.min(1, (dist[i] * n) / edgeFadeDepth);
+        }
     }
 
     // ── Build density map from mascot image ──
