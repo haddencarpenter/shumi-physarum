@@ -88,37 +88,54 @@
                 <h3>Rendering</h3>
                 <div class="cg"><label>Trail Brightness</label><div class="sl"><input type="range" id="trailBright" min="0.3" max="3.0" step="0.1" value="1.8" oninput="UL('trailBright',this.value)"><span class="vd" id="trailBright-v">1.8</span></div><div class="hint">Sweet spot 1.2–2.5 · too dim below, blown out above</div></div>
                 <div class="cg"><label>Agent Glow</label><div class="sl"><input type="range" id="agentGlow" min="0" max="2.0" step="0.1" value="0.5" oninput="UL('agentGlow',this.value)"><span class="vd" id="agentGlow-v">0.5</span></div><div class="hint">Sweet spot 0.2–0.8 · 0 = no dots, high = distracting sparkle</div></div>
-                <div class="cg"><label>Cursor Influence</label><div class="sl"><input type="range" id="cursorInf" min="0" max="150" step="10" value="0" oninput="UL('cursorInf',this.value)"><span class="vd" id="cursorInf-v">0</span></div><div class="hint">0 for recording · raise for interactive exploration</div></div>
+                <div class="cg"><label>Cursor Influence</label><div class="sl"><input type="range" id="cursorInf" min="0" max="500" step="10" value="0" oninput="UL('cursorInf',this.value)"><span class="vd" id="cursorInf-v">0</span></div><div class="hint">0 for recording · raise for interactive exploration</div></div>
             </div>
 
             <div class="cs">
                 <h3>Colors</h3>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;">
+                    <button class="btn" onclick="applyPreset('gold')" style="flex:1;min-width:60px;font-size:10px;">Shumi Gold</button>
+                    <button class="btn" onclick="applyPreset('emerald')" style="flex:1;min-width:60px;font-size:10px;">Emerald</button>
+                    <button class="btn" onclick="applyPreset('violet')" style="flex:1;min-width:60px;font-size:10px;">Violet</button>
+                    <button class="btn" onclick="applyPreset('ice')" style="flex:1;min-width:60px;font-size:10px;">Ice</button>
+                    <button class="btn" onclick="applyPreset('ember')" style="flex:1;min-width:60px;font-size:10px;">Ember</button>
+                    <button class="btn" onclick="applyPreset('toxic')" style="flex:1;min-width:60px;font-size:10px;">Toxic</button>
+                    <button class="btn" onclick="applyPreset('rose')" style="flex:1;min-width:60px;font-size:10px;">Rose</button>
+                    <button class="btn" onclick="applyPreset('mono')" style="flex:1;min-width:60px;font-size:10px;">Mono</button>
+                </div>
                 <div class="clg"><label>Trail Base</label><div class="cpc"><input type="color" id="c1" value="#1A1408" onchange="UC('c1',this.value)"><span class="cv" id="c1-v">#1A1408</span></div></div>
                 <div class="clg"><label>Trail Bright</label><div class="cpc"><input type="color" id="c2" value="#D4A84B" onchange="UC('c2',this.value)"><span class="cv" id="c2-v">#D4A84B</span></div></div>
                 <div class="clg"><label>Hub / Hot</label><div class="cpc"><input type="color" id="c3" value="#D97757" onchange="UC('c3',this.value)"><span class="cv" id="c3-v">#D97757</span></div></div>
             </div>
 
             <div class="cs">
-                <h3>Actions</h3>
+                <h3>Save</h3>
                 <div class="br">
-                    <button class="btn" onclick="resetParameters()">Reset</button>
-                    <button class="btn" onclick="exportImage()">Download PNG</button>
+                    <button class="btn" onclick="exportImage()" style="font-weight:600;">Save PNG</button>
+                    <button class="btn" id="rec-btn" onclick="toggleRecord()" style="background:#1a1a1a;color:#e8e8e8;border-color:#333;font-weight:600;">● Record WebM</button>
                 </div>
                 <div style="margin-top:6px;">
-                    <button class="btn" id="rec-btn" onclick="toggleRecord()" style="width:100%;background:#1a1a1a;color:#e8e8e8;border-color:#333;">● Record WebM</button>
+                    <button class="btn" onclick="resetParameters()" style="width:100%;">Reset All Parameters</button>
                 </div>
-                <div style="margin-top:6px;">
+                <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--lg);text-align:center;">
+                    <div style="font-size:11px;color:var(--mg);line-height:1.5;">Scroll down for batch recording, fullscreen 1080p capture, animated GIF export, and seed audition tools ↓</div>
+                </div>
+            </div>
+
+            <div class="cs">
+                <h3>Recording Studio</h3>
+                <div style="margin-bottom:8px;">
                     <button class="btn" id="audition-btn" onclick="auditionSeeds()" style="width:100%;">⚡ Preview Seeds</button>
                 </div>
-                <div style="margin-top:8px;">
-                    <div class="sl" style="margin-bottom:6px;">
-                        <label style="font-size:11px;min-width:65px;">Clip Length</label>
-                        <input type="range" id="clipLen" min="5" max="60" step="5" value="15" oninput="document.getElementById('clipLen-v').textContent=this.value+'s'">
-                        <span class="vd" id="clipLen-v">15s</span>
-                    </div>
+                <div class="sl" style="margin-bottom:6px;">
+                    <label style="font-size:11px;min-width:65px;">Clip Length</label>
+                    <input type="range" id="clipLen" min="5" max="60" step="5" value="15" oninput="document.getElementById('clipLen-v').textContent=this.value+'s'">
+                    <span class="vd" id="clipLen-v">15s</span>
+                </div>
+                <div style="margin-bottom:6px;">
                     <button class="btn" id="batch-btn" onclick="batchRecord()" style="width:100%;background:#0D0D0D;color:#39FF14;border-color:#39FF14;">🎬 Batch Record Bookmarks</button>
                 </div>
-                <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--lg);">
+                <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--lg);">
                     <button class="btn" id="fs-rec-btn" onclick="fullscreenRecord()" style="width:100%;background:#0D0D0D;color:#FFD700;border-color:#FFD700;font-weight:600;padding:10px 12px;">🖥 Fullscreen Record (1080p)</button>
                     <div style="margin-top:4px;font-size:10px;color:var(--mg);text-align:center;">Hides UI, resizes to 1080x1080, records current seed</div>
                 </div>
@@ -1052,6 +1069,27 @@
         let i = parseInt(id.replace('c', '')) - 1;
         P.colors[i] = v;
         document.getElementById(id + '-v').textContent = v;
+    }
+
+    const COLOR_PRESETS = {
+        gold:    ['#1A1408', '#D4A84B', '#D97757'],
+        emerald: ['#061A0A', '#2ECC71', '#1ABC9C'],
+        violet:  ['#0D0815', '#9B59B6', '#E74C8B'],
+        ice:     ['#060D1A', '#5DADE2', '#AED6F1'],
+        ember:   ['#1A0A04', '#E74C3C', '#F39C12'],
+        toxic:   ['#0A1A04', '#39FF14', '#BFFF00'],
+        rose:    ['#1A0810', '#E91E63', '#FF6F91'],
+        mono:    ['#0D0D0D', '#CCCCCC', '#FFFFFF'],
+    };
+
+    function applyPreset(name) {
+        let c = COLOR_PRESETS[name];
+        if (!c) return;
+        P.colors = [...c];
+        c.forEach((v, i) => {
+            document.getElementById('c' + (i + 1)).value = v;
+            document.getElementById('c' + (i + 1) + '-v').textContent = v;
+        });
     }
 
     function updateSeedDisplay() { document.getElementById('seed-input').value = P.seed; }
