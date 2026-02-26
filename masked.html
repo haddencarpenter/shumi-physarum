@@ -127,23 +127,17 @@ const TEXTURES = {
                    ms: { speed: 3.5, sensorDist: 10, diffusion: 0.16, deposit: 18, decay: 0.962, turnSpeed: 16, trailBright: 3.2 } },
 };
 
+const TEXTURE_NAMES = ['standard', 'crystalline', 'smoke', 'coral', 'silk', 'electric', 'flow', 'spore'];
+
 const PALETTES = [
-    // Warm gold, campfire. Standard texture, the anchor.
-    { name: 'Ember',  texture: 'standard',    mascot: ['#181208', '#E0B860', '#E8A070'], bg: ['#121010', '#9A8A55', '#8A7050'], chromatic: ['rgba(240,140,80,A)', 'rgba(80,180,220,A)'] },
-    // Glacial blue. Sharp crystalline ice formations.
-    { name: 'Frost',  texture: 'crystalline', mascot: ['#0A1018', '#70B0E0', '#90C8E8'], bg: ['#0C1014', '#507898', '#608090'], chromatic: ['rgba(100,180,240,A)', 'rgba(180,120,220,A)'] },
-    // Forest green. Dense branching coral/root networks.
-    { name: 'Moss',   texture: 'coral',       mascot: ['#0C1408', '#88C870', '#B0D890'], bg: ['#0C1210', '#608858', '#6A8060'], chromatic: ['rgba(120,220,100,A)', 'rgba(220,200,80,A)'] },
-    // Silver moonlight. Ghostly smoke, ethereal.
-    { name: 'Pearl',  texture: 'smoke',       mascot: ['#0E0E0E', '#C0B8B0', '#E0D8D0'], bg: ['#0A0A0A', '#807870', '#9A9490'], chromatic: ['rgba(200,200,220,A)', 'rgba(140,130,160,A)'] },
-    // Soft pink. Delicate silk threads.
-    { name: 'Bloom',  texture: 'silk',        mascot: ['#140A10', '#D880B8', '#E0A0C8'], bg: ['#120C10', '#906878', '#886878'], chromatic: ['rgba(220,120,180,A)', 'rgba(100,220,180,A)'] },
-    // Warm yellow. Tight bright spore clusters.
-    { name: 'Honey',  texture: 'spore',       mascot: ['#14120A', '#E0C860', '#E8C080'], bg: ['#12100A', '#988850', '#8A8058'], chromatic: ['rgba(230,200,80,A)', 'rgba(80,130,220,A)'] },
-    // Ocean blue. Wide flowing river currents.
-    { name: 'Tide',   texture: 'flow',        mascot: ['#080C14', '#6888C0', '#80A0D0'], bg: ['#0A0C12', '#506888', '#486080'], chromatic: ['rgba(100,140,220,A)', 'rgba(220,140,100,A)'] },
-    // Terracotta. Fast electric streaks through clay.
-    { name: 'Rust',   texture: 'electric',    mascot: ['#140C08', '#C88060', '#D8A080'], bg: ['#120A0A', '#8A6050', '#806048'], chromatic: ['rgba(210,130,90,A)', 'rgba(90,200,180,A)'] },
+    { name: 'Ember',  mascot: ['#181208', '#E0B860', '#E8A070'], bg: ['#121010', '#9A8A55', '#8A7050'], chromatic: ['rgba(240,140,80,A)', 'rgba(80,180,220,A)'] },
+    { name: 'Frost',  mascot: ['#0A1018', '#70B0E0', '#90C8E8'], bg: ['#0C1014', '#507898', '#608090'], chromatic: ['rgba(100,180,240,A)', 'rgba(180,120,220,A)'] },
+    { name: 'Moss',   mascot: ['#0C1408', '#88C870', '#B0D890'], bg: ['#0C1210', '#608858', '#6A8060'], chromatic: ['rgba(120,220,100,A)', 'rgba(220,200,80,A)'] },
+    { name: 'Pearl',  mascot: ['#0E0E0E', '#C0B8B0', '#E0D8D0'], bg: ['#0A0A0A', '#807870', '#9A9490'], chromatic: ['rgba(200,200,220,A)', 'rgba(140,130,160,A)'] },
+    { name: 'Bloom',  mascot: ['#140A10', '#D880B8', '#E0A0C8'], bg: ['#120C10', '#906878', '#886878'], chromatic: ['rgba(220,120,180,A)', 'rgba(100,220,180,A)'] },
+    { name: 'Honey',  mascot: ['#14120A', '#E0C860', '#E8C080'], bg: ['#12100A', '#988850', '#8A8058'], chromatic: ['rgba(230,200,80,A)', 'rgba(80,130,220,A)'] },
+    { name: 'Tide',   mascot: ['#080C14', '#6888C0', '#80A0D0'], bg: ['#0A0C12', '#506888', '#486080'], chromatic: ['rgba(100,140,220,A)', 'rgba(220,140,100,A)'] },
+    { name: 'Rust',   mascot: ['#140C08', '#C88060', '#D8A080'], bg: ['#120A0A', '#8A6050', '#806048'], chromatic: ['rgba(210,130,90,A)', 'rgba(90,200,180,A)'] },
 ];
 
 // Active palette (set per seed in initAll)
@@ -180,10 +174,14 @@ function driftColor(hex, hueDrift, satDrift, lumDrift) {
     return hslToHex(h + hueDrift, s + satDrift, l + lumDrift);
 }
 
+let activeTextureName = 'standard';
+
 function selectPalette(seed) {
-    // Use seed to pick family
-    let idx = seed % PALETTES.length;
-    activePalette = PALETTES[idx];
+    // Palette and texture on independent cycles
+    let palIdx = seed % PALETTES.length;
+    let texIdx = Math.floor(seed / PALETTES.length) % TEXTURE_NAMES.length;
+    activePalette = PALETTES[palIdx];
+    activeTextureName = TEXTURE_NAMES[texIdx];
 
     // Per-seed drift within family (subtle: +/-8 hue, +/-5 sat, +/-3 lum)
     let tmpRng = seed;
@@ -195,8 +193,8 @@ function selectPalette(seed) {
     COLORS = activePalette.mascot.map(c => driftColor(c, hDrift, sDrift, lDrift));
     BG_COLORS = activePalette.bg.map(c => driftColor(c, hDrift * 0.6, sDrift * 0.4, lDrift * 0.3));
 
-    // Apply texture profile
-    let tex = TEXTURES[activePalette.texture] || TEXTURES.standard;
+    // Apply texture profile (decoupled from palette)
+    let tex = TEXTURES[activeTextureName] || TEXTURES.standard;
     let bgTex = tex.bg;
     let msTex = tex.ms;
 
@@ -785,7 +783,7 @@ function frame() {
     }
 
     if (msFc === 1) {
-        statusEl.textContent = `${seed} · ${activePalette.name}`;
+        statusEl.textContent = `${seed} · ${activePalette.name} · ${activeTextureName}`;
         statusEl.classList.add('show');
         clearTimeout(statusEl._fadeTimer);
         statusEl._fadeTimer = setTimeout(() => statusEl.classList.remove('show'), 3000);
