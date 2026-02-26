@@ -335,6 +335,7 @@ let msCx, msCy, msFc = 0;
 let maskImg = null;
 let featheredMask = null; // Blurred-edge version of mask for soft bleed
 let densityMap = null;    // Luminance/edge map from mascot — guides trail deposit
+let edgeDistMap = null;   // 0 at mask edges, 1 deep inside — fades deposit near boundaries
 let edgeFoods = [];       // Food sources placed at high-contrast edges
 let running = false;
 
@@ -375,14 +376,43 @@ function buildMask() {
     const my = (MSIZE - s) / 2;
     maskCtx.drawImage(maskImg, mx, my, s, s);
 
-    // Feathered mask — same shape with blurred edges for soft alpha bleed
+    // Feathered mask — wide blur for gradual edge dissolution
     featheredMask = document.createElement('canvas');
     featheredMask.width = MSIZE;
     featheredMask.height = MSIZE;
     let fCtx = featheredMask.getContext('2d');
-    fCtx.filter = 'blur(4px)';
+    fCtx.filter = 'blur(14px)';
     fCtx.drawImage(maskCanvasEl, 0, 0);
     fCtx.filter = 'none';
+
+    // Edge distance map — 0 at edges, 1 deep inside. Used to fade deposit near boundaries.
+    let maskData = maskCtx.getImageData(0, 0, MSIZE, MSIZE).data;
+    edgeDistMap = new Float32Array(MSIZE * MSIZE);
+    // First pass: binary mask
+    let binary = new Uint8Array(MSIZE * MSIZE);
+    for (let i = 0; i < MSIZE * MSIZE; i++) binary[i] = maskData[i * 4 + 3] > 30 ? 1 : 0;
+    // Distance transform (approximate via iterative erosion layers)
+    let dist = new Float32Array(MSIZE * MSIZE);
+    for (let i = 0; i < MSIZE * MSIZE; i++) dist[i] = binary[i] ? 999 : 0;
+    // Forward pass
+    for (let y = 1; y < MSIZE - 1; y++) {
+        for (let x = 1; x < MSIZE - 1; x++) {
+            let i = y * MSIZE + x;
+            if (dist[i] > 0) dist[i] = Math.min(dist[i], Math.min(dist[i-1], dist[i-MSIZE]) + 1);
+        }
+    }
+    // Backward pass
+    for (let y = MSIZE - 2; y > 0; y--) {
+        for (let x = MSIZE - 2; x > 0; x--) {
+            let i = y * MSIZE + x;
+            if (dist[i] > 0) dist[i] = Math.min(dist[i], Math.min(dist[i+1], dist[i+MSIZE]) + 1);
+        }
+    }
+    // Normalize: 0 at edge, 1.0 at 30+ pixels inside
+    let edgeFadeDepth = 30;
+    for (let i = 0; i < MSIZE * MSIZE; i++) {
+        edgeDistMap[i] = Math.min(1, dist[i] / edgeFadeDepth);
+    }
 
     // ── Build density map from mascot image ──
     // Combines edge detection + luminance contrast to create a guide field
@@ -467,7 +497,7 @@ function sampleT(trail, w, h, x, y) {
 class Agent {
     constructor(x, y, h) { this.x = x; this.y = y; this.h = h; }
 
-    step(P, trail, foods, w, h, dmap) {
+    step(P, trail, foods, w, h, dmap, edmap) {
         let sL = this.sense(P, trail, w, h, -P.sensorAngle);
         let sC = this.sense(P, trail, w, h, 0);
         let sR = this.sense(P, trail, w, h, P.sensorAngle);
@@ -519,7 +549,12 @@ class Agent {
             if (dmap) {
                 let d = dmap[iy * w + ix] || 0;
                 let dm = P.densityMult !== undefined ? P.densityMult : 1.0;
-                dep = P.deposit * (0.5 + d * 2.5 * dm); // dm scales edge boost (0.4 for flow, 1.0 default)
+                dep = P.deposit * (0.5 + d * 2.5 * dm);
+            }
+            // Edge dissolution: fade deposit near mask boundaries
+            if (edmap) {
+                let ef = edmap[iy * w + ix] || 0;
+                dep *= 0.15 + ef * 0.85; // 15% deposit at very edge, full at center
             }
             let tmax = P.trailMax || 255;
             trail[iy * w + ix] = Math.min(trail[iy * w + ix] + dep, tmax);
@@ -616,12 +651,14 @@ function resize() {
 
 function generateBgFoods() {
     bgFoods = [];
+    let cx = VW / 2, cy = VH / 2; // center on mascot, not spawn point
+    let minR = MSIZE * 0.75; // clear the mascot silhouette + buffer
     for (let i = 0; i < BG.foodCount; i++) {
         let a = rng() * Math.PI * 2;
-        let r = 50 + rng() * Math.min(VW, VH) * 0.35;
+        let r = minR + rng() * Math.min(VW, VH) * 0.35;
         bgFoods.push({
-            x: bgCx + Math.cos(a) * r,
-            y: bgCy + Math.sin(a) * r,
+            x: cx + Math.cos(a) * r,
+            y: cy + Math.sin(a) * r,
             r: 80 + rng() * 120
         });
     }
@@ -693,7 +730,7 @@ function frame() {
         for (let i = 0; i < n; i++) spawnAgent(msAgents, msCx, msCy, MS.spawnR);
     }
     for (let s = 0; s < MS.stepsPerFrame; s++) {
-        for (let a of msAgents) a.step(MS, msTrail, msFoods, MSIZE, MSIZE, densityMap);
+        for (let a of msAgents) a.step(MS, msTrail, msFoods, MSIZE, MSIZE, densityMap, edgeDistMap);
     }
     let msD = diffuse(msTrail, msTrailPrev, MSIZE, MSIZE, MS.diffusion, MS.decay);
     msTrail = msD.trail; msTrailPrev = msD.trailPrev;
@@ -722,30 +759,6 @@ function frame() {
     mascotCtx.drawImage(featheredMask, 0, 0);
     mascotCtx.globalCompositeOperation = 'source-over';
 
-    // Gold bloom halo — mascot shape drawn larger and blurred behind
-    // (drawn on bg canvas so it sits between background and mascot)
-    let haloAlpha = Math.min(0.15, msFc * 0.0015);
-    if (haloAlpha > 0) {
-        bgCtx.save();
-        bgCtx.globalAlpha = haloAlpha;
-        bgCtx.filter = 'blur(20px)';
-        let haloScale = 1.15;
-        let haloSize = MSIZE * haloScale;
-        let hx = (VW - haloSize) / 2;
-        let hy = (VH - haloSize) / 2;
-        bgCtx.drawImage(maskCanvasEl, hx, hy, haloSize, haloSize);
-        bgCtx.filter = 'none';
-        bgCtx.globalAlpha = 1;
-        bgCtx.restore();
-    }
-
-    // Faint ghost outline that fades
-    let ghost = Math.max(0, 0.06 - msFc * 0.0008);
-    if (ghost > 0) {
-        mascotCtx.globalAlpha = ghost;
-        mascotCtx.drawImage(maskCanvasEl, 0, 0);
-        mascotCtx.globalAlpha = 1;
-    }
 
     // ── Composite for recording ──
     if (isRecording) {
