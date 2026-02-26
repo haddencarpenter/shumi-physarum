@@ -690,7 +690,7 @@ function initAll() {
     bgTrail = new Float32Array(VW * VH);
     bgTrailPrev = new Float32Array(VW * VH);
     // Seed trail in a ring around the mascot edge, not a center point
-    let spawnRingR = MSIZE * 0.3;
+    let spawnRingR = MSIZE * 0.35;
     for (let i = 0; i < 24; i++) {
         let a = (i / 24) * Math.PI * 2;
         seedTrail(bgTrail, bgCx + Math.cos(a) * spawnRingR, bgCy + Math.sin(a) * spawnRingR, VW, VH, 8);
@@ -742,7 +742,7 @@ function frame() {
     // ── Background sim step — spawn from mascot boundary ring ──
     if (bgAgents.length < BG.agentCount) {
         let n = Math.min(BG.spawnRate, BG.agentCount - bgAgents.length);
-        let ringR = MSIZE * 0.3;
+        let ringR = MSIZE * 0.35;
         for (let i = 0; i < n; i++) {
             let a = rng() * Math.PI * 2;
             let r = ringR + (rng() - 0.5) * 20;
@@ -754,6 +754,24 @@ function frame() {
     }
     let bgD = diffuse(bgTrail, bgTrailPrev, VW, VH, BG.diffusion, BG.decay);
     bgTrail = bgD.trail; bgTrailPrev = bgD.trailPrev;
+
+    // Suppress bg trail near mascot center so network thins inward, grows outward
+    let fadeR = MSIZE * 0.358;
+    let fadeR2 = fadeR * fadeR;
+    let yMin = Math.max(0, Math.floor(bgCy - fadeR)), yMax = Math.min(VH - 1, Math.ceil(bgCy + fadeR));
+    let xMin = Math.max(0, Math.floor(bgCx - fadeR)), xMax = Math.min(VW - 1, Math.ceil(bgCx + fadeR));
+    for (let y = yMin; y <= yMax; y++) {
+        let dy = y - bgCy;
+        for (let x = xMin; x <= xMax; x++) {
+            let dx = x - bgCx;
+            let d2 = dx * dx + dy * dy;
+            if (d2 < fadeR2) {
+                let f = Math.sqrt(d2) / fadeR; // 0 at center, 1 at edge
+                f = f * f; // quadratic falloff: stronger suppression near center
+                bgTrail[y * VW + x] *= f;
+            }
+        }
+    }
 
     // ── Mascot sim step ──
     if (msAgents.length < MS.agentCount) {
