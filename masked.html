@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHUMI — Mycelial Mascot Reveal</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0D0D0D; overflow: hidden; font-family: 'Courier New', monospace; }
+        /* Background physarum — fills entire viewport */
+        #bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+        /* Mascot layer — centered, chromatic orbit */
+        #mascot-layer {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;
+            animation: chromatic-orbit 6s linear infinite;
+        }
+        @keyframes chromatic-orbit {
+            0%   { filter: drop-shadow(8px 0 2px rgba(255,60,40,0.25)) drop-shadow(-8px 0 2px rgba(40,220,255,0.25)); }
+            25%  { filter: drop-shadow(0 8px 2px rgba(255,60,40,0.25)) drop-shadow(0 -8px 2px rgba(40,220,255,0.25)); }
+            50%  { filter: drop-shadow(-8px 0 2px rgba(255,60,40,0.25)) drop-shadow(8px 0 2px rgba(40,220,255,0.25)); }
+            75%  { filter: drop-shadow(0 -8px 2px rgba(255,60,40,0.25)) drop-shadow(0 8px 2px rgba(40,220,255,0.25)); }
+            100% { filter: drop-shadow(8px 0 2px rgba(255,60,40,0.25)) drop-shadow(-8px 0 2px rgba(40,220,255,0.25)); }
+        }
+
+        /* Subtle chromatic on background too — slower, dimmer */
+        #bg {
+            animation: bg-chromatic 14s linear infinite;
+        }
+        @keyframes bg-chromatic {
+            0%   { filter: drop-shadow(3px 0 1px rgba(255,60,40,0.08)) drop-shadow(-3px 0 1px rgba(40,220,255,0.08)); }
+            50%  { filter: drop-shadow(-3px 0 1px rgba(255,60,40,0.08)) drop-shadow(3px 0 1px rgba(40,220,255,0.08)); }
+            100% { filter: drop-shadow(3px 0 1px rgba(255,60,40,0.08)) drop-shadow(-3px 0 1px rgba(40,220,255,0.08)); }
+        }
+        /* Hidden work canvases */
+        .hidden-canvas { position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none; width: 0; height: 0; overflow: hidden; }
+        /* Composite output for recording */
+        #composite { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; opacity: 0; }
+        #controls {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 10px; z-index: 10;
+        }
+        .btn {
+            padding: 10px 20px; border: 1px solid #333; background: rgba(13,13,13,0.85);
+            color: #D4A84B; font-family: 'Courier New', monospace; font-size: 13px;
+            cursor: pointer; border-radius: 6px; transition: all 0.2s; backdrop-filter: blur(8px);
+        }
+        .btn:hover { border-color: #D4A84B; background: rgba(212,168,75,0.1); }
+        .btn.active { border-color: #ff4444; color: #ff4444; }
+        #status {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            color: #D4A84B; font-size: 12px; opacity: 0.5; z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background physarum: full viewport -->
+    <canvas id="bg"></canvas>
+    <!-- Mascot masked physarum: square, centered -->
+    <canvas id="mascot-layer"></canvas>
+    <!-- Hidden work canvases -->
+    <div class="hidden-canvas">
+        <canvas id="bg-sim"></canvas>
+        <canvas id="mascot-sim"></canvas>
+        <canvas id="mask-canvas"></canvas>
+    </div>
+    <!-- Composite for recording -->
+    <canvas id="composite"></canvas>
+
+    <div id="status">Loading...</div>
+    <div id="controls">
+        <button class="btn" onclick="restart()">New Seed</button>
+        <button class="btn" id="rec-btn" onclick="toggleRecord()">● Record</button>
+        <button class="btn" onclick="savePNG()">Save PNG</button>
+    </div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════════
+
+// Mascot colors — full warmth, high luminance
+const COLORS = ['#1A1408', '#D4A84B', '#D97757'];
+// Background colors — desaturated, cooler, recedes into depth
+const BG_COLORS = ['#111010', '#8A7A42', '#7A5038'];
+
+// Background sim params — covers full viewport
+const BG = {
+    agentCount: 10000,
+    speed: 5.0,
+    sensorDist: 22,
+    sensorAngle: 40 * Math.PI / 180,
+    turnSpeed: 20 * Math.PI / 180,
+    deposit: 12,
+    decay: 0.968,
+    diffusion: 0.25,
+    trailBright: 1.2,
+    agentGlow: 0.25,
+    spawnR: 15,
+    stepsPerFrame: 4,
+    spawnRate: 60,
+    initialBatch: 1500,
+    foodCount: 12,
+    foodStr: 15,
+};
+
+// Mascot sim params — denser, brighter to stand out
+const MS = {
+    agentCount: 6000,
+    speed: 4.0,
+    sensorDist: 16,
+    sensorAngle: 35 * Math.PI / 180,
+    turnSpeed: 18 * Math.PI / 180,
+    deposit: 16,
+    decay: 0.975,
+    diffusion: 0.2,
+    trailBright: 2.8,
+    agentGlow: 0.7,
+    spawnR: 10,
+    stepsPerFrame: 4,
+    spawnRate: 50,
+    initialBatch: 1200,
+};
+
+let seed = Math.floor(Math.random() * 999999) + 1;
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+
+// Canvases
+const bgCanvas = document.getElementById('bg');
+const bgSimCanvas = document.getElementById('bg-sim');
+const mascotCanvas = document.getElementById('mascot-layer');
+const mascotSimCanvas = document.getElementById('mascot-sim');
+const maskCanvasEl = document.getElementById('mask-canvas');
+const compositeCanvas = document.getElementById('composite');
+const statusEl = document.getElementById('status');
+
+const bgCtx = bgCanvas.getContext('2d');
+const bgSimCtx = bgSimCanvas.getContext('2d');
+const mascotCtx = mascotCanvas.getContext('2d');
+const mascotSimCtx = mascotSimCanvas.getContext('2d');
+const maskCtx = maskCanvasEl.getContext('2d');
+const compCtx = compositeCanvas.getContext('2d');
+
+// Viewport dimensions
+let VW, VH;
+// Mascot square size
+let MSIZE = 400;
+
+// Simulation state for background
+let bgAgents = [], bgTrail, bgTrailPrev, bgFoods = [];
+let bgCx, bgCy, bgFc = 0;
+
+// Simulation state for mascot
+let msAgents = [], msTrail, msTrailPrev, msFoods = [];
+let msCx, msCy, msFc = 0;
+
+let maskImg = null;
+let featheredMask = null; // Blurred-edge version of mask for soft bleed
+let densityMap = null;    // Luminance/edge map from mascot — guides trail deposit
+let edgeFoods = [];       // Food sources placed at high-contrast edges
+let running = false;
+
+// Seeded PRNG
+let rngState;
+function srng(s) { rngState = s | 0; }
+function rng() {
+    rngState = (rngState + 0x6D2B79F5) | 0;
+    let t = Math.imul(rngState ^ (rngState >>> 15), 1 | rngState);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function h2r(hex) {
+    let r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? { r: parseInt(r[1], 16), g: parseInt(r[2], 16), b: parseInt(r[3], 16) } : { r: 100, g: 80, b: 30 };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MASCOT MASK
+// ═══════════════════════════════════════════════════════════════
+
+function loadMascot() {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => { maskImg = img; resolve(); };
+        img.onerror = () => { statusEl.textContent = 'Could not load shumi.webp'; resolve(); };
+        img.src = 'shumi.webp';
+    });
+}
+
+function buildMask() {
+    maskCanvasEl.width = MSIZE;
+    maskCanvasEl.height = MSIZE;
+    maskCtx.clearRect(0, 0, MSIZE, MSIZE);
+    const s = MSIZE * 0.7;
+    const mx = (MSIZE - s) / 2;
+    const my = (MSIZE - s) / 2;
+    maskCtx.drawImage(maskImg, mx, my, s, s);
+
+    // Feathered mask — same shape with blurred edges for soft alpha bleed
+    featheredMask = document.createElement('canvas');
+    featheredMask.width = MSIZE;
+    featheredMask.height = MSIZE;
+    let fCtx = featheredMask.getContext('2d');
+    fCtx.filter = 'blur(4px)';
+    fCtx.drawImage(maskCanvasEl, 0, 0);
+    fCtx.filter = 'none';
+
+    // ── Build density map from mascot image ──
+    // Combines edge detection + luminance contrast to create a guide field
+    let imgData = maskCtx.getImageData(0, 0, MSIZE, MSIZE);
+    let px = imgData.data;
+    densityMap = new Float32Array(MSIZE * MSIZE);
+    edgeFoods = [];
+
+    // Pass 1: luminance
+    let lum = new Float32Array(MSIZE * MSIZE);
+    for (let i = 0; i < MSIZE * MSIZE; i++) {
+        let r = px[i*4], g = px[i*4+1], b = px[i*4+2], a = px[i*4+3];
+        lum[i] = a > 10 ? (r * 0.299 + g * 0.587 + b * 0.114) / 255 : 0;
+    }
+
+    // Pass 2: Sobel edge detection + luminance variance = density
+    for (let y = 1; y < MSIZE - 1; y++) {
+        for (let x = 1; x < MSIZE - 1; x++) {
+            let idx = y * MSIZE + x;
+            // Sobel gradient magnitude
+            let gx = -lum[idx - MSIZE - 1] + lum[idx - MSIZE + 1]
+                     -2*lum[idx - 1]        + 2*lum[idx + 1]
+                     -lum[idx + MSIZE - 1]  + lum[idx + MSIZE + 1];
+            let gy = -lum[idx - MSIZE - 1] - 2*lum[idx - MSIZE] - lum[idx - MSIZE + 1]
+                     +lum[idx + MSIZE - 1]  + 2*lum[idx + MSIZE] + lum[idx + MSIZE + 1];
+            let edge = Math.sqrt(gx * gx + gy * gy);
+
+            // Density = edge strength (structural features) + base luminance
+            densityMap[idx] = Math.min(1, edge * 3 + lum[idx] * 0.15);
+        }
+    }
+
+    // Pass 3: find high-edge points as structural food sources
+    // (eyes, cap outline, face border, stem edges)
+    let candidates = [];
+    for (let y = 4; y < MSIZE - 4; y += 3) {
+        for (let x = 4; x < MSIZE - 4; x += 3) {
+            let d = densityMap[y * MSIZE + x];
+            if (d > 0.4) candidates.push({ x, y, d });
+        }
+    }
+    // Sort by density, pick top N spread across the shape
+    candidates.sort((a, b) => b.d - a.d);
+    // Spatial filtering — don't cluster foods too close
+    let minDist = MSIZE * 0.06;
+    for (let c of candidates) {
+        if (edgeFoods.length >= 30) break;
+        let tooClose = false;
+        for (let f of edgeFoods) {
+            let dx = f.x - c.x, dy = f.y - c.y;
+            if (Math.sqrt(dx*dx + dy*dy) < minDist) { tooClose = true; break; }
+        }
+        if (!tooClose) edgeFoods.push({ x: c.x, y: c.y, r: 100 });
+    }
+}
+
+function getMaskFoodPoints(count) {
+    let points = [];
+    let data = maskCtx.getImageData(0, 0, MSIZE, MSIZE).data;
+    let opaque = [];
+    for (let y = 0; y < MSIZE; y += 3) {
+        for (let x = 0; x < MSIZE; x += 3) {
+            if (data[(y * MSIZE + x) * 4 + 3] > 128) opaque.push({ x, y });
+        }
+    }
+    for (let i = 0; i < count && opaque.length > 0; i++) {
+        points.push(opaque[Math.floor(rng() * opaque.length)]);
+    }
+    return points;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GENERIC PHYSARUM ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+function sampleT(trail, w, h, x, y) {
+    let ix = Math.floor(x), iy = Math.floor(y);
+    if (ix < 0 || ix >= w || iy < 0 || iy >= h) return 0;
+    return trail[iy * w + ix];
+}
+
+class Agent {
+    constructor(x, y, h) { this.x = x; this.y = y; this.h = h; }
+
+    step(P, trail, foods, w, h, dmap) {
+        let sL = this.sense(P, trail, w, h, -P.sensorAngle);
+        let sC = this.sense(P, trail, w, h, 0);
+        let sR = this.sense(P, trail, w, h, P.sensorAngle);
+
+        // Density-guided steering: sense density at left/center/right and bias toward structure
+        if (dmap) {
+            let sd = P.sensorDist;
+            let dL = sampleT(dmap, w, h, this.x + Math.cos(this.h - P.sensorAngle) * sd, this.y + Math.sin(this.h - P.sensorAngle) * sd);
+            let dC = sampleT(dmap, w, h, this.x + Math.cos(this.h) * sd, this.y + Math.sin(this.h) * sd);
+            let dR = sampleT(dmap, w, h, this.x + Math.cos(this.h + P.sensorAngle) * sd, this.y + Math.sin(this.h + P.sensorAngle) * sd);
+            // Blend density signal into trail sensor readings
+            sL += dL * 40;
+            sC += dC * 40;
+            sR += dR * 40;
+        }
+
+        // Food attraction
+        if (foods && foods.length > 0) {
+            let bd = Infinity, ba = 0;
+            for (let f of foods) {
+                let dx = f.x - this.x, dy = f.y - this.y;
+                let d = Math.sqrt(dx * dx + dy * dy);
+                if (d < (f.r || 150) && d < bd) { bd = d; ba = Math.atan2(dy, dx); }
+            }
+            if (bd < 150 && bd > 3) {
+                let diff = ba - this.h;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                this.h += diff * Math.pow(1 - bd / 150, 2) * 0.12;
+            }
+        }
+
+        if (sC > sL && sC > sR) { /* straight */ }
+        else if (sC < sL && sC < sR) { this.h += (rng() < 0.5 ? P.turnSpeed : -P.turnSpeed); }
+        else if (sL > sR) { this.h -= P.turnSpeed; }
+        else if (sR > sL) { this.h += P.turnSpeed; }
+
+        this.x += Math.cos(this.h) * P.speed;
+        this.y += Math.sin(this.h) * P.speed;
+
+        // Wrap
+        if (this.x < 0) this.x += w; if (this.x >= w) this.x -= w;
+        if (this.y < 0) this.y += h; if (this.y >= h) this.y -= h;
+
+        let ix = Math.floor(this.x), iy = Math.floor(this.y);
+        if (ix >= 0 && ix < w && iy >= 0 && iy < h) {
+            // Density-guided deposit: more trail at structural features
+            let dep = P.deposit;
+            if (dmap) {
+                let d = dmap[iy * w + ix] || 0;
+                dep = P.deposit * (0.5 + d * 2.5); // 0.5x at flat areas, 3x at edges
+            }
+            trail[iy * w + ix] = Math.min(trail[iy * w + ix] + dep, 255);
+        }
+    }
+
+    sense(P, trail, w, h, offset) {
+        let a = this.h + offset;
+        return sampleT(trail, w, h, this.x + Math.cos(a) * P.sensorDist, this.y + Math.sin(a) * P.sensorDist);
+    }
+}
+
+function diffuse(trail, trailPrev, w, h, diffusion, decay) {
+    let tmp = trailPrev; trailPrev = trail; trail = tmp;
+    let id = 1 - diffusion;
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            let idx = y * w + x;
+            let avg = (trailPrev[idx - 1] + trailPrev[idx + 1] + trailPrev[idx - w] + trailPrev[idx + w]) * 0.25;
+            trail[idx] = (trailPrev[idx] * id + avg * diffusion) * decay;
+        }
+    }
+    return { trail, trailPrev };
+}
+
+function spawnAgent(agents, cx, cy, spawnR) {
+    let a = rng() * Math.PI * 2;
+    let r = rng() * spawnR;
+    agents.push(new Agent(cx + Math.cos(a) * r, cy + Math.sin(a) * r, a));
+}
+
+function seedTrail(trail, cx, cy, w, h, spawnR) {
+    for (let dy = -spawnR; dy <= spawnR; dy++) {
+        for (let dx = -spawnR; dx <= spawnR; dx++) {
+            let dd = Math.sqrt(dx * dx + dy * dy);
+            if (dd < spawnR) {
+                let ix = Math.floor(cx + dx), iy = Math.floor(cy + dy);
+                if (ix >= 0 && ix < w && iy >= 0 && iy < h) {
+                    trail[iy * w + ix] = (1 - dd / spawnR) * 40;
+                }
+            }
+        }
+    }
+}
+
+function renderTrail(ctx, trail, w, h, P, colors) {
+    colors = colors || COLORS;
+    let base = h2r(colors[0]), bright = h2r(colors[1]), hot = h2r(colors[2]);
+    let imgData = ctx.createImageData(w, h);
+    let px = imgData.data;
+
+    for (let i = 0; i < w * h; i++) {
+        let v = trail[i] * P.trailBright;
+        let t = Math.min(v / 80, 1);
+        let t2 = Math.min(v / 200, 1);
+        let r, g, b;
+        if (t2 > 0.3) {
+            let ht = (t2 - 0.3) / 0.7;
+            r = bright.r + (hot.r - bright.r) * ht;
+            g = bright.g + (hot.g - bright.g) * ht;
+            b = bright.b + (hot.b - bright.b) * ht;
+        } else {
+            r = base.r + (bright.r - base.r) * t;
+            g = base.g + (bright.g - base.g) * t;
+            b = base.b + (bright.b - base.b) * t;
+        }
+        let idx = i * 4;
+        px[idx] = Math.min(255, r);
+        px[idx + 1] = Math.min(255, g);
+        px[idx + 2] = Math.min(255, b);
+        px[idx + 3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+
+function resize() {
+    VW = window.innerWidth;
+    VH = window.innerHeight;
+    MSIZE = Math.floor(Math.min(VW, VH) * 0.5);
+
+    bgCanvas.width = VW; bgCanvas.height = VH;
+    bgSimCanvas.width = VW; bgSimCanvas.height = VH;
+    compositeCanvas.width = VW; compositeCanvas.height = VH;
+
+    mascotCanvas.width = MSIZE; mascotCanvas.height = MSIZE;
+    mascotSimCanvas.width = MSIZE; mascotSimCanvas.height = MSIZE;
+
+    if (maskImg) buildMask();
+}
+
+function generateBgFoods() {
+    bgFoods = [];
+    for (let i = 0; i < BG.foodCount; i++) {
+        let a = rng() * Math.PI * 2;
+        let r = 50 + rng() * Math.min(VW, VH) * 0.35;
+        bgFoods.push({
+            x: bgCx + Math.cos(a) * r,
+            y: bgCy + Math.sin(a) * r,
+            r: 80 + rng() * 120
+        });
+    }
+}
+
+function initAll() {
+    srng(seed);
+
+    // ── Background sim ──
+    bgCx = VW / 2;
+    bgCy = VH * 0.35;
+    bgFc = 0;
+    bgAgents = [];
+    bgTrail = new Float32Array(VW * VH);
+    bgTrailPrev = new Float32Array(VW * VH);
+    seedTrail(bgTrail, bgCx, bgCy, VW, VH, BG.spawnR);
+    generateBgFoods();
+    for (let f of bgFoods) seedTrail(bgTrail, f.x, f.y, VW, VH, 8);
+    for (let i = 0; i < BG.initialBatch; i++) spawnAgent(bgAgents, bgCx, bgCy, BG.spawnR);
+    bgSimCtx.fillStyle = '#0D0D0D';
+    bgSimCtx.fillRect(0, 0, VW, VH);
+
+    // ── Mascot sim ──
+    msCx = MSIZE / 2;
+    msCy = MSIZE / 2;
+    msFc = 0;
+    msAgents = [];
+    msTrail = new Float32Array(MSIZE * MSIZE);
+    msTrailPrev = new Float32Array(MSIZE * MSIZE);
+    seedTrail(msTrail, msCx, msCy, MSIZE, MSIZE, MS.spawnR);
+    // Use edge-detected structural food sources instead of random
+    msFoods = edgeFoods.length > 0 ? edgeFoods : getMaskFoodPoints(25);
+    for (let f of msFoods) seedTrail(msTrail, f.x, f.y, MSIZE, MSIZE, 6);
+
+    // Pre-seed trail along density map so agents immediately follow structure
+    if (densityMap) {
+        for (let i = 0; i < MSIZE * MSIZE; i++) {
+            msTrail[i] += densityMap[i] * 15;
+        }
+    }
+    for (let i = 0; i < MS.initialBatch; i++) spawnAgent(msAgents, msCx, msCy, MS.spawnR);
+    mascotSimCtx.fillStyle = '#0D0D0D';
+    mascotSimCtx.fillRect(0, 0, MSIZE, MSIZE);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FRAME
+// ═══════════════════════════════════════════════════════════════
+
+function frame() {
+    if (!running) return;
+    bgFc++; msFc++;
+
+    // ── Background sim step ──
+    if (bgAgents.length < BG.agentCount) {
+        let n = Math.min(BG.spawnRate, BG.agentCount - bgAgents.length);
+        for (let i = 0; i < n; i++) spawnAgent(bgAgents, bgCx, bgCy, BG.spawnR);
+    }
+    for (let s = 0; s < BG.stepsPerFrame; s++) {
+        for (let a of bgAgents) a.step(BG, bgTrail, bgFoods, VW, VH);
+    }
+    let bgD = diffuse(bgTrail, bgTrailPrev, VW, VH, BG.diffusion, BG.decay);
+    bgTrail = bgD.trail; bgTrailPrev = bgD.trailPrev;
+
+    // ── Mascot sim step ──
+    if (msAgents.length < MS.agentCount) {
+        let n = Math.min(MS.spawnRate, MS.agentCount - msAgents.length);
+        for (let i = 0; i < n; i++) spawnAgent(msAgents, msCx, msCy, MS.spawnR);
+    }
+    for (let s = 0; s < MS.stepsPerFrame; s++) {
+        for (let a of msAgents) a.step(MS, msTrail, msFoods, MSIZE, MSIZE, densityMap);
+    }
+    let msD = diffuse(msTrail, msTrailPrev, MSIZE, MSIZE, MS.diffusion, MS.decay);
+    msTrail = msD.trail; msTrailPrev = msD.trailPrev;
+
+    // ── Render background (desaturated, cooler) ──
+    renderTrail(bgSimCtx, bgTrail, VW, VH, BG, BG_COLORS);
+    bgCtx.drawImage(bgSimCanvas, 0, 0);
+
+    // Atmospheric vignette — dark falloff centered on mascot, creates depth
+    let vigR = Math.max(VW, VH) * 0.55;
+    let grad = bgCtx.createRadialGradient(VW/2, VH/2, MSIZE * 0.2, VW/2, VH/2, vigR);
+    let vigFade = Math.min(1, bgFc * 0.008);
+    grad.addColorStop(0, `rgba(13,13,13,${0.45 * vigFade})`);
+    grad.addColorStop(0.5, `rgba(13,13,13,${0.18 * vigFade})`);
+    grad.addColorStop(1, 'rgba(13,13,13,0)');
+    bgCtx.fillStyle = grad;
+    bgCtx.fillRect(0, 0, VW, VH);
+
+    // ── Render mascot (full warmth, bright) ──
+    renderTrail(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
+    mascotCtx.clearRect(0, 0, MSIZE, MSIZE);
+    mascotCtx.drawImage(mascotSimCanvas, 0, 0);
+
+    // Feathered mask — blur the alpha edges for soft bleed
+    mascotCtx.globalCompositeOperation = 'destination-in';
+    mascotCtx.drawImage(featheredMask, 0, 0);
+    mascotCtx.globalCompositeOperation = 'source-over';
+
+    // Gold bloom halo — mascot shape drawn larger and blurred behind
+    // (drawn on bg canvas so it sits between background and mascot)
+    let haloAlpha = Math.min(0.15, msFc * 0.0015);
+    if (haloAlpha > 0) {
+        bgCtx.save();
+        bgCtx.globalAlpha = haloAlpha;
+        bgCtx.filter = 'blur(20px)';
+        let haloScale = 1.15;
+        let haloSize = MSIZE * haloScale;
+        let hx = (VW - haloSize) / 2;
+        let hy = (VH - haloSize) / 2;
+        bgCtx.drawImage(maskCanvasEl, hx, hy, haloSize, haloSize);
+        bgCtx.filter = 'none';
+        bgCtx.globalAlpha = 1;
+        bgCtx.restore();
+    }
+
+    // Faint ghost outline that fades
+    let ghost = Math.max(0, 0.06 - msFc * 0.0008);
+    if (ghost > 0) {
+        mascotCtx.globalAlpha = ghost;
+        mascotCtx.drawImage(maskCanvasEl, 0, 0);
+        mascotCtx.globalAlpha = 1;
+    }
+
+    // ── Composite for recording ──
+    if (isRecording) {
+        compCtx.drawImage(bgCanvas, 0, 0);
+        let mx = (VW - MSIZE) / 2;
+        let my = (VH - MSIZE) / 2;
+        compCtx.drawImage(mascotCanvas, mx, my);
+    }
+
+    statusEl.textContent = `Seed ${seed} · BG ${bgAgents.length} + Mascot ${msAgents.length} agents`;
+    requestAnimationFrame(frame);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RECORDING
+// ═══════════════════════════════════════════════════════════════
+
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+
+function toggleRecord() {
+    if (isRecording) stopRecord();
+    else startRecord();
+}
+
+function startRecord() {
+    // Make composite visible for capture
+    compositeCanvas.style.opacity = '1';
+    compositeCanvas.style.zIndex = '5';
+
+    let stream = compositeCanvas.captureStream(60);
+    recordedChunks = [];
+    let mimeType = 'video/webm;codecs=vp9';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm;codecs=vp8';
+    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+
+    mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 });
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+        let blob = new Blob(recordedChunks, { type: 'video/webm' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a');
+        a.href = url;
+        a.download = `shumi-masked-${seed}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+        compositeCanvas.style.opacity = '0';
+        compositeCanvas.style.zIndex = '-1';
+    };
+    mediaRecorder.start(100);
+    isRecording = true;
+    document.getElementById('rec-btn').textContent = '■ Stop';
+    document.getElementById('rec-btn').classList.add('active');
+}
+
+function stopRecord() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    isRecording = false;
+    document.getElementById('rec-btn').textContent = '● Record';
+    document.getElementById('rec-btn').classList.remove('active');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════════════
+
+function restart() {
+    seed = Math.floor(Math.random() * 999999) + 1;
+    initAll();
+    if (!running) { running = true; requestAnimationFrame(frame); }
+}
+
+function savePNG() {
+    // Composite both layers
+    compCtx.drawImage(bgCanvas, 0, 0);
+    let mx = (VW - MSIZE) / 2;
+    let my = (VH - MSIZE) / 2;
+    compCtx.drawImage(mascotCanvas, mx, my);
+    let a = document.createElement('a');
+    a.download = `shumi-masked-${seed}.png`;
+    a.href = compositeCanvas.toDataURL('image/png');
+    a.click();
+}
+
+window.addEventListener('resize', () => {
+    resize();
+    initAll();
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════
+
+async function boot() {
+    await loadMascot();
+    resize();
+    initAll();
+    running = true;
+    requestAnimationFrame(frame);
+}
+
+boot();
+</script>
+</body>
+</html>
