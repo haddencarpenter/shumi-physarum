@@ -21,7 +21,12 @@
         /* Mascot layer — centered, chromatic orbit */
         #mascot-layer {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;
-            animation: chromatic-orbit 6s linear infinite;
+            animation: chromatic-orbit 6s linear infinite, breathe 5s ease-in-out infinite;
+        }
+        @keyframes breathe {
+            0%   { transform: translate(-50%, -50%) scale(1.0); }
+            50%  { transform: translate(-50%, -50%) scale(1.018); }
+            100% { transform: translate(-50%, -50%) scale(1.0); }
         }
         @keyframes chromatic-orbit {
             0%   { filter: drop-shadow(8px 0 2px rgba(255,60,40,0.25)) drop-shadow(-8px 0 2px rgba(40,220,255,0.25)); }
@@ -93,23 +98,52 @@
 
 // ── Palette families ──
 // Each: { name, mascot: [dark, mid, hot], bg: [dark, mid, hot], chromatic: [warm, cool] }
+// Texture profiles: define how trails behave per palette
+// bg/ms overrides are applied on top of base BG/MS params
+const TEXTURES = {
+    // Warm, steady glow. Medium everything, the baseline.
+    standard:    { bg: { speed: 5.0, sensorDist: 22, diffusion: 0.25, deposit: 12, decay: 0.968, turnSpeed: 20, trailBright: 1.2, foodCount: 12 },
+                   ms: { speed: 4.0, sensorDist: 16, diffusion: 0.20, deposit: 16, decay: 0.975, turnSpeed: 18, trailBright: 2.8 } },
+    // Sharp defined veins, gem-like facets. Low diffusion, high deposit.
+    crystalline: { bg: { speed: 4.0, sensorDist: 18, diffusion: 0.10, deposit: 18, decay: 0.958, turnSpeed: 16, trailBright: 1.6, foodCount: 16 },
+                   ms: { speed: 3.5, sensorDist: 12, diffusion: 0.08, deposit: 22, decay: 0.965, turnSpeed: 14, trailBright: 3.2 } },
+    // Soft ghostly haze. High diffusion, low deposit, trails dissolve.
+    smoke:       { bg: { speed: 5.5, sensorDist: 28, diffusion: 0.45, deposit: 8,  decay: 0.980, turnSpeed: 24, trailBright: 0.9, foodCount: 8 },
+                   ms: { speed: 4.5, sensorDist: 22, diffusion: 0.38, deposit: 10, decay: 0.985, turnSpeed: 22, trailBright: 2.2 } },
+    // Dense branching networks, slow organic growth. Coral reef.
+    coral:       { bg: { speed: 3.0, sensorDist: 30, diffusion: 0.18, deposit: 14, decay: 0.972, turnSpeed: 15, trailBright: 1.4, foodCount: 18 },
+                   ms: { speed: 2.5, sensorDist: 24, diffusion: 0.15, deposit: 18, decay: 0.978, turnSpeed: 13, trailBright: 3.0 } },
+    // Thin delicate threads, fast fade. Silk in water.
+    silk:        { bg: { speed: 6.0, sensorDist: 20, diffusion: 0.30, deposit: 6,  decay: 0.950, turnSpeed: 22, trailBright: 1.8, foodCount: 10 },
+                   ms: { speed: 5.0, sensorDist: 14, diffusion: 0.25, deposit: 8,  decay: 0.958, turnSpeed: 20, trailBright: 3.4 } },
+    // Long streaky paths, nervous energy. Lightning in a bottle.
+    electric:    { bg: { speed: 7.0, sensorDist: 14, diffusion: 0.15, deposit: 10, decay: 0.962, turnSpeed: 28, trailBright: 1.5, foodCount: 14 },
+                   ms: { speed: 6.0, sensorDist: 10, diffusion: 0.12, deposit: 14, decay: 0.968, turnSpeed: 26, trailBright: 3.0 } },
+    // Wide flowing rivers, slow and heavy. Lava lamp.
+    flow:        { bg: { speed: 4.5, sensorDist: 26, diffusion: 0.42, deposit: 4,  decay: 0.945, turnSpeed: 14, trailBright: 0.7, foodCount: 6 },
+                   ms: { speed: 4.0, sensorDist: 16, diffusion: 0.38, deposit: 4,  decay: 0.948, turnSpeed: 12, trailBright: 1.4, densityMult: 0.4, trailMax: 120 } },
+    // Tight clusters with bright nodes. Constellation map.
+    spore:       { bg: { speed: 4.5, sensorDist: 12, diffusion: 0.20, deposit: 16, decay: 0.955, turnSpeed: 18, trailBright: 1.8, foodCount: 20 },
+                   ms: { speed: 3.5, sensorDist: 10, diffusion: 0.16, deposit: 18, decay: 0.962, turnSpeed: 16, trailBright: 3.2 } },
+};
+
 const PALETTES = [
-    // Warm gold, the original. Inviting, campfire.
-    { name: 'Ember',  mascot: ['#181208', '#E0B860', '#E8A070'], bg: ['#121010', '#9A8A55', '#8A7050'], chromatic: ['rgba(240,140,80,A)', 'rgba(80,180,220,A)'] },
-    // Cool blue, glacial glow. Calm, deep.
-    { name: 'Frost',  mascot: ['#0A1018', '#70B0E0', '#90C8E8'], bg: ['#0C1014', '#507898', '#608090'], chromatic: ['rgba(100,180,240,A)', 'rgba(180,120,220,A)'] },
-    // Soft green, forest bioluminescence. Alive, organic.
-    { name: 'Moss',   mascot: ['#0C1408', '#88C870', '#B0D890'], bg: ['#0C1210', '#608858', '#6A8060'], chromatic: ['rgba(120,220,100,A)', 'rgba(220,200,80,A)'] },
-    // Silver moonlight. Minimal, elegant.
-    { name: 'Pearl',  mascot: ['#0E0E0E', '#C0B8B0', '#E0D8D0'], bg: ['#0A0A0A', '#807870', '#9A9490'], chromatic: ['rgba(200,200,220,A)', 'rgba(140,130,160,A)'] },
-    // Warm pink, soft glow. Floral, not neon.
-    { name: 'Bloom',  mascot: ['#140A10', '#D880B8', '#E0A0C8'], bg: ['#120C10', '#906878', '#886878'], chromatic: ['rgba(220,120,180,A)', 'rgba(100,220,180,A)'] },
-    // Warm yellow, honeycomb. Rich, sunlit.
-    { name: 'Honey',  mascot: ['#14120A', '#E0C860', '#E8C080'], bg: ['#12100A', '#988850', '#8A8058'], chromatic: ['rgba(230,200,80,A)', 'rgba(80,130,220,A)'] },
-    // Soft ocean blue, tidal. Serene, deep water.
-    { name: 'Tide',   mascot: ['#080C14', '#6888C0', '#80A0D0'], bg: ['#0A0C12', '#506888', '#486080'], chromatic: ['rgba(100,140,220,A)', 'rgba(220,140,100,A)'] },
-    // Warm terracotta, clay. Earthy, grounded.
-    { name: 'Rust',   mascot: ['#140C08', '#C88060', '#D8A080'], bg: ['#120A0A', '#8A6050', '#806048'], chromatic: ['rgba(210,130,90,A)', 'rgba(90,200,180,A)'] },
+    // Warm gold, campfire. Standard texture, the anchor.
+    { name: 'Ember',  texture: 'standard',    mascot: ['#181208', '#E0B860', '#E8A070'], bg: ['#121010', '#9A8A55', '#8A7050'], chromatic: ['rgba(240,140,80,A)', 'rgba(80,180,220,A)'] },
+    // Glacial blue. Sharp crystalline ice formations.
+    { name: 'Frost',  texture: 'crystalline', mascot: ['#0A1018', '#70B0E0', '#90C8E8'], bg: ['#0C1014', '#507898', '#608090'], chromatic: ['rgba(100,180,240,A)', 'rgba(180,120,220,A)'] },
+    // Forest green. Dense branching coral/root networks.
+    { name: 'Moss',   texture: 'coral',       mascot: ['#0C1408', '#88C870', '#B0D890'], bg: ['#0C1210', '#608858', '#6A8060'], chromatic: ['rgba(120,220,100,A)', 'rgba(220,200,80,A)'] },
+    // Silver moonlight. Ghostly smoke, ethereal.
+    { name: 'Pearl',  texture: 'smoke',       mascot: ['#0E0E0E', '#C0B8B0', '#E0D8D0'], bg: ['#0A0A0A', '#807870', '#9A9490'], chromatic: ['rgba(200,200,220,A)', 'rgba(140,130,160,A)'] },
+    // Soft pink. Delicate silk threads.
+    { name: 'Bloom',  texture: 'silk',        mascot: ['#140A10', '#D880B8', '#E0A0C8'], bg: ['#120C10', '#906878', '#886878'], chromatic: ['rgba(220,120,180,A)', 'rgba(100,220,180,A)'] },
+    // Warm yellow. Tight bright spore clusters.
+    { name: 'Honey',  texture: 'spore',       mascot: ['#14120A', '#E0C860', '#E8C080'], bg: ['#12100A', '#988850', '#8A8058'], chromatic: ['rgba(230,200,80,A)', 'rgba(80,130,220,A)'] },
+    // Ocean blue. Wide flowing river currents.
+    { name: 'Tide',   texture: 'flow',        mascot: ['#080C14', '#6888C0', '#80A0D0'], bg: ['#0A0C12', '#506888', '#486080'], chromatic: ['rgba(100,140,220,A)', 'rgba(220,140,100,A)'] },
+    // Terracotta. Fast electric streaks through clay.
+    { name: 'Rust',   texture: 'electric',    mascot: ['#140C08', '#C88060', '#D8A080'], bg: ['#120A0A', '#8A6050', '#806048'], chromatic: ['rgba(210,130,90,A)', 'rgba(90,200,180,A)'] },
 ];
 
 // Active palette (set per seed in initAll)
@@ -161,17 +195,32 @@ function selectPalette(seed) {
     COLORS = activePalette.mascot.map(c => driftColor(c, hDrift, sDrift, lDrift));
     BG_COLORS = activePalette.bg.map(c => driftColor(c, hDrift * 0.6, sDrift * 0.4, lDrift * 0.3));
 
-    // Structural mutation: turbulence (turnSpeed) varies per seed
-    // Range: 14-26 degrees (default is 20 for BG, 18 for MS)
-    let turbulence = 14 + quickRng() * 12;
-    BG.turnSpeed = turbulence * Math.PI / 180;
-    MS.turnSpeed = (turbulence - 2) * Math.PI / 180;
+    // Apply texture profile
+    let tex = TEXTURES[activePalette.texture] || TEXTURES.standard;
+    let bgTex = tex.bg;
+    let msTex = tex.ms;
 
-    // Density mutation: decay varies per seed
-    // Range: 0.955-0.985 (lower = sharper trails, higher = ghostly)
-    let density = 0.955 + quickRng() * 0.030;
-    BG.decay = density;
-    MS.decay = density + 0.007;
+    // Per-seed jitter within texture (subtle, +/-10% of each param)
+    function jitter(base, range) { return base + (quickRng() - 0.5) * base * range; }
+
+    BG.speed = jitter(bgTex.speed, 0.15);
+    BG.sensorDist = Math.round(jitter(bgTex.sensorDist, 0.15));
+    BG.diffusion = Math.max(0.05, Math.min(0.50, jitter(bgTex.diffusion, 0.20)));
+    BG.deposit = Math.round(jitter(bgTex.deposit, 0.15));
+    BG.decay = Math.max(0.940, Math.min(0.990, jitter(bgTex.decay, 0.005)));
+    BG.turnSpeed = jitter(bgTex.turnSpeed, 0.15) * Math.PI / 180;
+    BG.trailBright = jitter(bgTex.trailBright, 0.10);
+    BG.foodCount = Math.round(jitter(bgTex.foodCount, 0.20));
+
+    MS.speed = jitter(msTex.speed, 0.15);
+    MS.sensorDist = Math.round(jitter(msTex.sensorDist, 0.15));
+    MS.diffusion = Math.max(0.05, Math.min(0.45, jitter(msTex.diffusion, 0.20)));
+    MS.deposit = Math.round(jitter(msTex.deposit, 0.15));
+    MS.decay = Math.max(0.945, Math.min(0.990, jitter(msTex.decay, 0.005)));
+    MS.turnSpeed = jitter(msTex.turnSpeed, 0.15) * Math.PI / 180;
+    MS.trailBright = jitter(msTex.trailBright, 0.10);
+    MS.densityMult = msTex.densityMult !== undefined ? msTex.densityMult : 1.0;
+    MS.trailMax = msTex.trailMax || 180; // Global cap prevents mascot blowout
 
     // Update chromatic aberration CSS to match palette
     let warm = activePalette.chromatic[0];
@@ -206,7 +255,7 @@ function selectPalette(seed) {
     mascotEl.style.animation = 'none';
     bgEl.style.animation = 'none';
     void mascotEl.offsetHeight;
-    mascotEl.style.animation = 'chromatic-orbit 6s linear infinite';
+    mascotEl.style.animation = 'chromatic-orbit 6s linear infinite, breathe 5s ease-in-out infinite';
     bgEl.style.animation = 'bg-chromatic 14s linear infinite';
 }
 
@@ -469,9 +518,11 @@ class Agent {
             let dep = P.deposit;
             if (dmap) {
                 let d = dmap[iy * w + ix] || 0;
-                dep = P.deposit * (0.5 + d * 2.5); // 0.5x at flat areas, 3x at edges
+                let dm = P.densityMult !== undefined ? P.densityMult : 1.0;
+                dep = P.deposit * (0.5 + d * 2.5 * dm); // dm scales edge boost (0.4 for flow, 1.0 default)
             }
-            trail[iy * w + ix] = Math.min(trail[iy * w + ix] + dep, 255);
+            let tmax = P.trailMax || 255;
+            trail[iy * w + ix] = Math.min(trail[iy * w + ix] + dep, tmax);
         }
     }
 
