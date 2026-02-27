@@ -1477,6 +1477,13 @@ function restart() {
     initAll();
     syncSliders();
     if (!running) { running = true; requestAnimationFrame(frame); }
+
+    // On mobile: auto-flash the stencil so mascot is immediately visible
+    if (IS_MOBILE) {
+        let prev = window._stencilMaster ?? 0.28;
+        window._stencilMaster = 3.0;
+        setTimeout(() => { window._stencilMaster = prev; }, 1500);
+    }
 }
 
 function drawSeedWatermark(ctx, w, h) {
