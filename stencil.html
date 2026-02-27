@@ -45,6 +45,11 @@
             50%  { filter: drop-shadow(-3px 0 1px rgba(255,60,40,0.08)) drop-shadow(3px 0 1px rgba(40,220,255,0.08)); }
             100% { filter: drop-shadow(3px 0 1px rgba(255,60,40,0.08)) drop-shadow(-3px 0 1px rgba(40,220,255,0.08)); }
         }
+        /* Kill expensive CSS filters on mobile — drop-shadow on canvas tanks GPU */
+        @media (max-width: 768px) {
+            #mascot-layer { animation: breathe 5s ease-in-out infinite !important; filter: none !important; }
+            #bg { animation: none !important; filter: none !important; }
+        }
         /* Hidden work canvases */
         .hidden-canvas { position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none; width: 0; height: 0; overflow: hidden; }
         /* Composite output for recording */
