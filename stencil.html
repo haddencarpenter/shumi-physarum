@@ -954,8 +954,7 @@ function renderTrail(ctx, trail, w, h, P, colors) {
         for (let col = 0; col < cols; col++) {
             let px = col * cellW + Math.floor(cellW / 2);
             if (py >= h || px >= w) continue;
-            let boost = _trailBoost || 1.0;
-            let v = trail[py * w + px] * P.trailBright * boost;
+            let v = trail[py * w + px] * P.trailBright;
 
             // Skip empty cells
             if (v < 1) continue;
@@ -1319,11 +1318,8 @@ function frame() {
         // HYBRID: pixel mold base, then ASCII overlaid below
         renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
     } else {
-        // Modes 1 & 2: ASCII trail base (trails unaffected by blast)
-        let savedBoost = _trailBoost;
-        _trailBoost = 1.0;  // never boost ASCII trails — blast only affects stencil
+        // Modes 1 & 2: ASCII trail base
         renderTrail(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
-        _trailBoost = savedBoost;
     }
     // ── ASCII stencil overlay (modes 1, 2, 4 — mode 3 is pure pixel) ──
     let STENCIL_MASTER = window._stencilMaster ?? 0.28;
@@ -1410,7 +1406,8 @@ function frame() {
                 if (nearDark) { alphaBoost = Math.max(alphaBoost, 2.5); }
 
                 // Blast mode: fill every cell at full brightness
-                if (isBlast && skipCell) {
+                let blast = STENCIL_MASTER > 1.0;
+                if (blast && skipCell) {
                     skipCell = false;
                     let rampIdx = Math.max(1, Math.floor(lumPulsed * (CHAR_RAMP.length - 1)));
                     ch = CHAR_RAMP[Math.min(CHAR_RAMP.length - 1, rampIdx)];
@@ -1418,38 +1415,41 @@ function frame() {
                 }
                 if (skipCell) continue;
 
-                // Color: use palette colors, scaled by luminance
                 let r, g, b;
-                {
-                    let colorPush = isBlast ? 3.0 : STENCIL_MASTER * 2.5;
+                if (blast) {
+                    // Red→white color ramp for dramatic face reveal
+                    let t = Math.min(1, lumPulsed * 1.3);
+                    if (t < 0.5) {
+                        let lt = t / 0.5;
+                        r = 60 + 195 * lt; g = 10 + 40 * lt; b = 10 + 30 * lt;
+                    } else {
+                        let ht = (t - 0.5) / 0.5;
+                        r = 255; g = 50 + 205 * ht; b = 40 + 215 * ht;
+                    }
+                    let whiten = Math.min(0.4, (STENCIL_MASTER - 1.0) * 0.15);
+                    r = r + (255 - r) * whiten; g = g + (255 - g) * whiten; b = b + (255 - b) * whiten;
+                } else {
+                    let colorPush = STENCIL_MASTER * 2.5;
                     let lumT = Math.min(1, lumPulsed * (0.9 + colorPush * 0.3));
-                    // 3-stop gradient: dim → bright → hot, weighted by stencil master
-                    let t = 0.15 + lumT * (0.5 + Math.min(colorPush, 2.0) * 0.15);
+                    let hotMix = 0.3 + colorPush * 0.35;
+                    let baseMix = 0.5 + colorPush * 0.25;
+                    let t = 0.2 + lumT * (0.4 + colorPush * 0.15);
                     if (t > 0.5) {
                         let ht = (t - 0.5) / 0.5;
-                        let hotMix = 0.3 + Math.min(colorPush, 2.0) * 0.3;
                         r = bright.r + (hot.r - bright.r) * ht * hotMix;
                         g = bright.g + (hot.g - bright.g) * ht * hotMix;
                         b = bright.b + (hot.b - bright.b) * ht * hotMix;
                     } else {
                         let bt = t / 0.5;
-                        let baseMix = 0.5 + Math.min(colorPush, 2.0) * 0.2;
                         r = bright.r * bt * baseMix + bright.r * 0.15;
                         g = bright.g * bt * baseMix + bright.g * 0.15;
                         b = bright.b * bt * baseMix + bright.b * 0.15;
                     }
-                    // In blast: push toward white for readability
-                    if (isBlast) {
-                        let whiten = Math.min(0.35, (STENCIL_MASTER - 1.0) * 0.12);
-                        r = r + (255 - r) * whiten;
-                        g = g + (255 - g) * whiten;
-                        b = b + (255 - b) * whiten;
-                    }
                 }
 
-                // Normal: linear scaling. Blast: quadratic punch for ASCII visibility
-                let masterAlpha = isBlast ? STENCIL_MASTER * (1 + STENCIL_MASTER) : STENCIL_MASTER;
-                let alphaFloor = isBlast ? 0.3 : 0;
+                // Always quadratic — gives dramatic blast contrast
+                let masterAlpha = STENCIL_MASTER * (1 + STENCIL_MASTER);
+                let alphaFloor = blast ? 0.3 : 0;
                 let finalAlpha = Math.min(1, Math.max(alphaFloor, cellBlend * cell.a * masterAlpha * alphaBoost));
                 mascotSimCtx.globalAlpha = finalAlpha;
                 mascotSimCtx.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
