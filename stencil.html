@@ -1489,6 +1489,29 @@ window.addEventListener('resize', () => {
     initAll();
 });
 
+// Hold F to flash stencil at full blast, release to restore
+let _savedMaster = null;
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'f' || e.key === 'F') {
+        if (_savedMaster === null) {
+            _savedMaster = window._stencilMaster ?? 0.28;
+            window._stencilMaster = 3.0;
+            let sl = document.getElementById('stencilMaster');
+            if (sl) sl.value = 3.0;
+        }
+    }
+});
+window.addEventListener('keyup', (e) => {
+    if (e.key === 'f' || e.key === 'F') {
+        if (_savedMaster !== null) {
+            window._stencilMaster = _savedMaster;
+            let sl = document.getElementById('stencilMaster');
+            if (sl) sl.value = _savedMaster;
+            _savedMaster = null;
+        }
+    }
+});
+
 // ═══════════════════════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════════════════════
