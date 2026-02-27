@@ -1343,13 +1343,24 @@ function frame() {
 
                 let r, g, b;
                 if (blast) {
-                    // Full bright: lerp straight from palette bright → hot based on lum
-                    let t = Math.min(1, lumPulsed * 1.2);
-                    r = bright.r + (hot.r - bright.r) * t;
-                    g = bright.g + (hot.g - bright.g) * t;
-                    b = bright.b + (hot.b - bright.b) * t;
-                    // Push toward white at very high master
-                    let whiten = Math.min(1, (STENCIL_MASTER - 1.0) * 0.3);
+                    // Blast uses mascot's native red→white, ignoring palette
+                    // Dark red base → vivid red → white, driven by cell luminance
+                    let t = Math.min(1, lumPulsed * 1.3);
+                    if (t < 0.5) {
+                        // Dark → vivid red
+                        let lt = t / 0.5;
+                        r = 60 + 195 * lt;   // 60 → 255
+                        g = 10 + 40 * lt;    // 10 → 50
+                        b = 10 + 30 * lt;    // 10 → 40
+                    } else {
+                        // Vivid red → white
+                        let ht = (t - 0.5) / 0.5;
+                        r = 255;
+                        g = 50 + 205 * ht;   // 50 → 255
+                        b = 40 + 215 * ht;   // 40 → 255
+                    }
+                    // Extra whiten push at high master
+                    let whiten = Math.min(0.4, (STENCIL_MASTER - 1.0) * 0.15);
                     r = r + (255 - r) * whiten;
                     g = g + (255 - g) * whiten;
                     b = b + (255 - b) * whiten;
