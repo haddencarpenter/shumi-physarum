@@ -200,19 +200,19 @@
 
             <div class="panel-section">
                 <h3>Stencil</h3>
-                <div class="sg"><label>Master Opacity</label><div class="sl"><input type="range" id="s-stencilMaster" min="0" max="1.5" step="0.01" oninput="window._stencilMaster=+this.value;sv(this)"><span class="vd" id="s-stencilMaster-v"></span></div></div>
-                <div class="sg"><label>Edge Strong</label><div class="sl"><input type="range" id="s-edgeStrong" min="0.1" max="0.6" step="0.01" oninput="window._edgeStrong=+this.value;sv(this)"><span class="vd" id="s-edgeStrong-v"></span></div></div>
-                <div class="sg"><label>Edge Weak</label><div class="sl"><input type="range" id="s-edgeWeak" min="0.04" max="0.3" step="0.01" oninput="window._edgeWeak=+this.value;sv(this)"><span class="vd" id="s-edgeWeak-v"></span></div></div>
+                <div class="sg"><label>Master Opacity</label><div class="sl"><input type="range" id="s-stencilMaster" min="0" max="1.5" step="0.01" oninput="window._stencilMaster=+this.value;sv(this);updateShareURL()"><span class="vd" id="s-stencilMaster-v"></span></div></div>
+                <div class="sg"><label>Edge Strong</label><div class="sl"><input type="range" id="s-edgeStrong" min="0.1" max="0.6" step="0.01" oninput="window._edgeStrong=+this.value;sv(this);updateShareURL()"><span class="vd" id="s-edgeStrong-v"></span></div></div>
+                <div class="sg"><label>Edge Weak</label><div class="sl"><input type="range" id="s-edgeWeak" min="0.04" max="0.3" step="0.01" oninput="window._edgeWeak=+this.value;sv(this);updateShareURL()"><span class="vd" id="s-edgeWeak-v"></span></div></div>
                 <div class="sg"><label>Pulse Speed</label><div class="sl"><input type="range" id="s-pulseSpeed" min="0.01" max="0.12" step="0.002" oninput="window._pulseSpeed=+this.value;sv(this)"><span class="vd" id="s-pulseSpeed-v"></span></div></div>
             </div>
         </div>
     </div>
 
     <div id="mode-controls" style="position:fixed;top:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:10;">
-        <button class="btn mode-btn" data-mode="1" onclick="setMode(1)">1 Mold</button>
+        <button class="btn mode-btn active" data-mode="1" onclick="setMode(1)">1 Ramp</button>
         <button class="btn mode-btn" data-mode="2" onclick="setMode(2)">2 Contour</button>
-        <button class="btn mode-btn active" data-mode="3" onclick="setMode(3)">3 Ramp</button>
-        <button class="btn mode-btn" data-mode="4" onclick="setMode(4)">4 Code</button>
+        <button class="btn mode-btn" data-mode="3" onclick="setMode(3)">3 Code</button>
+        <button class="btn mode-btn" data-mode="4" onclick="setMode(4)">4 Mold</button>
         <button class="btn mode-btn" data-mode="5" onclick="setMode(5)">5 Hybrid</button>
     </div>
     <div id="controls">
@@ -283,12 +283,12 @@ const STENCIL_END = 18;           // frames when stencil is fully formed (~0.6s)
 let pulsePhase = 0;
 
 // ── Formation modes ──
-// 1: Mold — pure physarum pixel trails, organic glow, no ASCII
+// 1: Ramp — ASCII density symbols shaped by edge strength
 // 2: Contour — pixel trails masked to edges only, neon wireframe
-// 3: Ramp — ASCII density symbols shaped by edge strength
-// 4: Code — scrolling trading code characters fill mascot shape
+// 3: Code — scrolling trading code characters fill mascot shape
+// 4: Mold — pure physarum pixel trails, organic glow, no ASCII
 // 5: Hybrid — pixel mold base + faint ASCII overlay
-let formationMode = 3;  // default to Ramp mode
+let formationMode = 1;  // default to Ramp mode
 
 // Algo code texture: real trading code that tiles across the ASCII grid
 const CODE_LINES = [
@@ -527,9 +527,14 @@ const MS = {
     initialBatch: 1400,
 };
 
-// Read seed from URL if present, otherwise random
-let urlSeed = new URLSearchParams(window.location.search).get('seed');
-let seed = urlSeed ? parseInt(urlSeed) || 1 : Math.floor(Math.random() * 999999) + 1;
+// Read params from URL if present
+let _urlParams = new URLSearchParams(window.location.search);
+let seed = _urlParams.get('seed') ? parseInt(_urlParams.get('seed')) || 1 : Math.floor(Math.random() * 999999) + 1;
+// Restore settings from URL (applied after DOM ready, in boot)
+let _urlMode = _urlParams.get('mode');
+let _urlMaster = _urlParams.get('master');
+let _urlEdgeS = _urlParams.get('es');
+let _urlEdgeW = _urlParams.get('ew');
 
 // ═══════════════════════════════════════════════════════════════
 //  STATE
@@ -1082,6 +1087,7 @@ function setMode(m) {
     document.querySelectorAll('.mode-btn').forEach(b => {
         b.classList.toggle('active', parseInt(b.dataset.mode) === m);
     });
+    if (typeof updateShareURL === 'function') updateShareURL();
 }
 
 // Slider value display helper — show sensible precision
@@ -1279,13 +1285,13 @@ function frame() {
     bgCtx.fillRect(0, 0, VW, VH);
 
     // ── Render mascot — mode determines visual style ──
-    // Mode 1: Mold — pure physarum pixel glow, no ASCII
+    // Mode 1: Ramp — ASCII density characters (stencil overlay)
     // Mode 2: Contour — pixel trails only at edges, neon wireframe
-    // Mode 3: Ramp — ASCII density characters (stencil overlay)
-    // Mode 4: Code — scrolling trading code characters in mascot shape
+    // Mode 3: Code — scrolling trading code characters in mascot shape
+    // Mode 4: Mold — pure physarum pixel glow, no ASCII
     // Mode 5: Hybrid — pixel mold base + faint ASCII stencil on top
 
-    if (formationMode === 1) {
+    if (formationMode === 4) {
         // MOLD: pure organic pixel trails — no ASCII at all
         renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS, null);
     } else if (formationMode === 2) {
@@ -1296,11 +1302,11 @@ function frame() {
         // HYBRID: pixel mold base, then ASCII overlaid below
         renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS, null);
     } else {
-        // Modes 3 & 4: ASCII trail base
+        // Modes 1 & 3: ASCII trail base
         renderTrail(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
     }
-    // ── ASCII stencil overlay (modes 3, 4, 5 only — modes 1 & 2 are pure pixel) ──
-    if (stencilGrid && formation > 0 && (formationMode >= 3)) {
+    // ── ASCII stencil overlay (modes 1, 3, 5 — modes 2 & 4 are pure pixel) ──
+    if (stencilGrid && formation > 0 && (formationMode === 1 || formationMode === 3 || formationMode === 5)) {
         let EDGE_STRONG = window._edgeStrong ?? 0.3;
         let EDGE_WEAK   = window._edgeWeak ?? 0.12;
         let STENCIL_MASTER = window._stencilMaster ?? 0.28;
@@ -1319,8 +1325,8 @@ function frame() {
 
         let origCols = Math.floor(MSIZE / CELL_W);
         let origRows = Math.floor(MSIZE / CELL_H);
-        // Scroll offset for Code mode (mode 4)
-        let codeScroll = formationMode === 4 ? Math.floor(msFc * 0.15) : 0;
+        // Scroll offset for Code mode (mode 3)
+        let codeScroll = formationMode === 3 ? Math.floor(msFc * 0.15) : 0;
 
         for (let row = 0; row < sRows; row++) {
             for (let col = 0; col < sCols; col++) {
@@ -1353,7 +1359,7 @@ function frame() {
                     }
                 }
 
-                if (formationMode === 3) {
+                if (formationMode === 1) {
                     // RAMP: density symbols, edges heavier
                     let edgeBonus = isEdge ? 2 : (isMidEdge ? 1 : 0);
                     let rampIdx = Math.floor((lumPulsed + cell.edge) * (CHAR_RAMP.length - 1) + rampShift + edgeBonus);
@@ -1362,7 +1368,7 @@ function frame() {
                     if (!isMidEdge && (row + col) % 3 !== 0) { skipCell = true; }
                     alphaBoost = isEdge ? 1.8 : (isMidEdge ? 0.9 : 0.4);
 
-                } else if (formationMode === 4) {
+                } else if (formationMode === 3) {
                     // CODE: scrolling trading code fills the mascot shape
                     let scrollIdx = ((row + codeScroll) * sCols + col) % CODE_LEN;
                     ch = CODE_BUF[scrollIdx];
@@ -1530,8 +1536,7 @@ function restart() {
     }
     initAll();
     syncSliders();
-    // Update URL so the link is shareable
-    history.replaceState(null, '', '?seed=' + seed);
+    updateShareURL();
     if (!running) { running = true; requestAnimationFrame(frame); }
 
     // On mobile: auto-flash the stencil once it's formed
@@ -1546,7 +1551,8 @@ function restart() {
 }
 
 function copyLink() {
-    let url = window.location.origin + window.location.pathname + '?seed=' + seed;
+    updateShareURL();
+    let url = window.location.origin + window.location.pathname + window.location.search;
     navigator.clipboard.writeText(url).then(() => {
         let btn = document.querySelector('[onclick="copyLink()"]');
         let orig = btn.textContent;
@@ -1624,13 +1630,32 @@ window.addEventListener('keyup', (e) => {
 // ═══════════════════════════════════════════════════════════════
 
 async function boot() {
+    // Apply URL settings before init
+    if (_urlMode) { formationMode = parseInt(_urlMode) || 1; setMode(formationMode); }
+    if (_urlMaster) window._stencilMaster = parseFloat(_urlMaster);
+    if (_urlEdgeS) window._edgeStrong = parseFloat(_urlEdgeS);
+    if (_urlEdgeW) window._edgeWeak = parseFloat(_urlEdgeW);
+
     await loadMascot();
     resize();
     initAll();
     syncSliders();
-    history.replaceState(null, '', '?seed=' + seed);
+    updateShareURL();
     running = true;
     requestAnimationFrame(frame);
+}
+
+function updateShareURL() {
+    let p = new URLSearchParams();
+    p.set('seed', seed);
+    if (formationMode !== 1) p.set('mode', formationMode);
+    let m = window._stencilMaster;
+    if (m !== undefined && m !== 0.28) p.set('master', m.toFixed(2));
+    let es = window._edgeStrong;
+    if (es !== undefined && es !== 0.3) p.set('es', es.toFixed(2));
+    let ew = window._edgeWeak;
+    if (ew !== undefined && ew !== 0.12) p.set('ew', ew.toFixed(2));
+    history.replaceState(null, '', '?' + p.toString());
 }
 
 boot();
