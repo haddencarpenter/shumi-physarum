@@ -219,6 +219,7 @@
         <button class="btn" onclick="restart()">New Seed</button>
         <button class="btn" id="rec-btn" onclick="toggleRecord()">● Record</button>
         <button class="btn" onclick="savePNG()">Save PNG</button>
+        <button class="btn" onclick="copyLink()">Share</button>
     </div>
 
 <script>
@@ -526,7 +527,9 @@ const MS = {
     initialBatch: 1400,
 };
 
-let seed = Math.floor(Math.random() * 999999) + 1;
+// Read seed from URL if present, otherwise random
+let urlSeed = new URLSearchParams(window.location.search).get('seed');
+let seed = urlSeed ? parseInt(urlSeed) || 1 : Math.floor(Math.random() * 999999) + 1;
 
 // ═══════════════════════════════════════════════════════════════
 //  STATE
@@ -1527,6 +1530,8 @@ function restart() {
     }
     initAll();
     syncSliders();
+    // Update URL so the link is shareable
+    history.replaceState(null, '', '?seed=' + seed);
     if (!running) { running = true; requestAnimationFrame(frame); }
 
     // On mobile: auto-flash the stencil once it's formed
@@ -1538,6 +1543,19 @@ function restart() {
             setTimeout(() => { window._stencilMaster = prev; }, 2500);
         }, 600);
     }
+}
+
+function copyLink() {
+    let url = window.location.origin + window.location.pathname + '?seed=' + seed;
+    navigator.clipboard.writeText(url).then(() => {
+        let btn = document.querySelector('[onclick="copyLink()"]');
+        let orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+    }).catch(() => {
+        // Fallback for HTTP/non-secure contexts
+        prompt('Copy this link:', window.location.href);
+    });
 }
 
 function drawSeedWatermark(ctx, w, h) {
@@ -1610,6 +1628,7 @@ async function boot() {
     resize();
     initAll();
     syncSliders();
+    history.replaceState(null, '', '?seed=' + seed);
     running = true;
     requestAnimationFrame(frame);
 }
