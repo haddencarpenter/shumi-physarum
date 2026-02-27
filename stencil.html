@@ -255,28 +255,28 @@
 const TEXTURES = {
     // Warm, steady glow. Medium everything, the baseline.
     standard:    { bg: { speed: 7.0, sensorDist: 22, diffusion: 0.25, deposit: 12, decay: 0.960, turnSpeed: 26, trailBright: 1.3, foodCount: 12 },
-                   ms: { speed: 4.2, sensorDist: 20, diffusion: 0.16, deposit: 18, decay: 0.968, turnSpeed: 22, trailBright: 3.0 } },
-    // Sharp defined veins, gem-like facets. Low diffusion, high deposit.
+                   ms: { speed: 3.8, sensorDist: 22, diffusion: 0.18, deposit: 10, decay: 0.952, turnSpeed: 22, trailBright: 2.0 } },
+    // Sharp defined veins, gem-like facets. Low diffusion keeps structure.
     crystalline: { bg: { speed: 5.5, sensorDist: 18, diffusion: 0.10, deposit: 18, decay: 0.950, turnSpeed: 22, trailBright: 1.6, foodCount: 16 },
-                   ms: { speed: 4.0, sensorDist: 18, diffusion: 0.08, deposit: 22, decay: 0.962, turnSpeed: 18, trailBright: 3.2 } },
-    // Soft ghostly haze. High diffusion, low deposit, trails dissolve.
+                   ms: { speed: 3.5, sensorDist: 20, diffusion: 0.07, deposit: 12, decay: 0.948, turnSpeed: 18, trailBright: 2.2 } },
+    // Soft ghostly haze. High diffusion, trails dissolve quickly.
     smoke:       { bg: { speed: 7.5, sensorDist: 28, diffusion: 0.45, deposit: 8,  decay: 0.972, turnSpeed: 30, trailBright: 1.0, foodCount: 8 },
-                   ms: { speed: 4.5, sensorDist: 22, diffusion: 0.20, deposit: 16, decay: 0.970, turnSpeed: 24, trailBright: 2.6 } },
-    // Dense branching networks, organic growth.
+                   ms: { speed: 4.0, sensorDist: 24, diffusion: 0.22, deposit: 8,  decay: 0.955, turnSpeed: 24, trailBright: 1.8 } },
+    // Dense branching networks, organic growth. The gold standard.
     coral:       { bg: { speed: 4.5, sensorDist: 30, diffusion: 0.18, deposit: 14, decay: 0.965, turnSpeed: 22, trailBright: 1.4, foodCount: 18 },
-                   ms: { speed: 3.8, sensorDist: 24, diffusion: 0.15, deposit: 18, decay: 0.970, turnSpeed: 20, trailBright: 3.0 } },
+                   ms: { speed: 3.6, sensorDist: 26, diffusion: 0.14, deposit: 11, decay: 0.954, turnSpeed: 20, trailBright: 2.0 } },
     // Thin delicate threads, fast fade. Silk in water.
     silk:        { bg: { speed: 8.0, sensorDist: 20, diffusion: 0.30, deposit: 6,  decay: 0.942, turnSpeed: 28, trailBright: 1.8, foodCount: 10 },
-                   ms: { speed: 4.5, sensorDist: 20, diffusion: 0.18, deposit: 16, decay: 0.960, turnSpeed: 22, trailBright: 3.2 } },
+                   ms: { speed: 4.0, sensorDist: 22, diffusion: 0.20, deposit: 9,  decay: 0.946, turnSpeed: 22, trailBright: 2.2 } },
     // Long streaky paths, nervous energy. Lightning in a bottle.
     electric:    { bg: { speed: 9.0, sensorDist: 14, diffusion: 0.15, deposit: 10, decay: 0.955, turnSpeed: 34, trailBright: 1.5, foodCount: 14 },
-                   ms: { speed: 4.8, sensorDist: 18, diffusion: 0.12, deposit: 18, decay: 0.962, turnSpeed: 26, trailBright: 3.0 } },
+                   ms: { speed: 4.2, sensorDist: 20, diffusion: 0.10, deposit: 10, decay: 0.950, turnSpeed: 26, trailBright: 2.0 } },
     // Wide flowing rivers, heavy. Lava lamp.
     flow:        { bg: { speed: 6.0, sensorDist: 26, diffusion: 0.42, deposit: 4,  decay: 0.938, turnSpeed: 20, trailBright: 0.8, foodCount: 6 },
-                   ms: { speed: 4.2, sensorDist: 22, diffusion: 0.20, deposit: 14, decay: 0.958, turnSpeed: 18, trailBright: 2.4, densityMult: 0.5, trailMax: 150 } },
+                   ms: { speed: 3.8, sensorDist: 24, diffusion: 0.22, deposit: 8,  decay: 0.944, turnSpeed: 18, trailBright: 1.6, densityMult: 0.5, trailMax: 150 } },
     // Tight clusters with bright nodes. Constellation map.
     spore:       { bg: { speed: 6.0, sensorDist: 12, diffusion: 0.20, deposit: 16, decay: 0.948, turnSpeed: 24, trailBright: 1.8, foodCount: 20 },
-                   ms: { speed: 4.0, sensorDist: 18, diffusion: 0.14, deposit: 20, decay: 0.962, turnSpeed: 20, trailBright: 3.2 } },
+                   ms: { speed: 3.6, sensorDist: 20, diffusion: 0.12, deposit: 11, decay: 0.950, turnSpeed: 20, trailBright: 2.2 } },
 };
 
 const TEXTURE_NAMES = ['standard', 'crystalline', 'smoke', 'coral', 'silk', 'electric', 'flow', 'spore'];
@@ -1031,15 +1031,15 @@ function renderTrailPixel(ctx, trail, w, h, P, colors, edgeMask) {
             px[i*4] = base.r; px[i*4+1] = base.g; px[i*4+2] = base.b; px[i*4+3] = 255;
             continue;
         }
-        // 3-stop color: base → bright → hot
-        let t1 = Math.min(vP / 25, 1);
-        let t2 = Math.min(vP / 60, 1);
+        // 3-stop color: base → bright → hot (hot only at high trail intensity)
+        let t1 = Math.min(vP / 30, 1);
+        let t2 = Math.min(vP / 80, 1);
         let r, g, b;
-        if (t2 > 0.3) {
-            let ht = (t2 - 0.3) / 0.7;
-            r = bright.r + (hot.r - bright.r) * ht;
-            g = bright.g + (hot.g - bright.g) * ht;
-            b = bright.b + (hot.b - bright.b) * ht;
+        if (t2 > 0.5) {
+            let ht = (t2 - 0.5) / 0.5;
+            r = bright.r + (hot.r - bright.r) * ht * 0.6;
+            g = bright.g + (hot.g - bright.g) * ht * 0.6;
+            b = bright.b + (hot.b - bright.b) * ht * 0.6;
         } else {
             r = base.r + (bright.r - base.r) * t1;
             g = base.g + (bright.g - base.g) * t1;
@@ -1435,34 +1435,32 @@ function frame() {
                 }
                 if (skipCell) continue;
 
+                // Color: use palette colors, scaled by luminance
                 let r, g, b;
-                if (blast) {
-                    let t = Math.min(1, lumPulsed * 1.3);
-                    if (t < 0.5) {
-                        let lt = t / 0.5;
-                        r = 60 + 195 * lt; g = 10 + 40 * lt; b = 10 + 30 * lt;
-                    } else {
-                        let ht = (t - 0.5) / 0.5;
-                        r = 255; g = 50 + 205 * ht; b = 40 + 215 * ht;
-                    }
-                    let whiten = Math.min(0.4, (STENCIL_MASTER - 1.0) * 0.15);
-                    r = r + (255 - r) * whiten; g = g + (255 - g) * whiten; b = b + (255 - b) * whiten;
-                } else {
-                    let colorPush = STENCIL_MASTER * 2.5;
+                {
+                    let colorPush = blast ? 3.0 : STENCIL_MASTER * 2.5;
                     let lumT = Math.min(1, lumPulsed * (0.9 + colorPush * 0.3));
-                    let hotMix = 0.3 + colorPush * 0.35;
-                    let baseMix = 0.5 + colorPush * 0.25;
-                    let t = 0.2 + lumT * (0.4 + colorPush * 0.15);
+                    // 3-stop gradient: dim → bright → hot, weighted by stencil master
+                    let t = 0.15 + lumT * (0.5 + Math.min(colorPush, 2.0) * 0.15);
                     if (t > 0.5) {
                         let ht = (t - 0.5) / 0.5;
+                        let hotMix = 0.3 + Math.min(colorPush, 2.0) * 0.3;
                         r = bright.r + (hot.r - bright.r) * ht * hotMix;
                         g = bright.g + (hot.g - bright.g) * ht * hotMix;
                         b = bright.b + (hot.b - bright.b) * ht * hotMix;
                     } else {
                         let bt = t / 0.5;
+                        let baseMix = 0.5 + Math.min(colorPush, 2.0) * 0.2;
                         r = bright.r * bt * baseMix + bright.r * 0.15;
                         g = bright.g * bt * baseMix + bright.g * 0.15;
                         b = bright.b * bt * baseMix + bright.b * 0.15;
+                    }
+                    // In blast: push toward white for readability
+                    if (blast) {
+                        let whiten = Math.min(0.35, (STENCIL_MASTER - 1.0) * 0.12);
+                        r = r + (255 - r) * whiten;
+                        g = g + (255 - g) * whiten;
+                        b = b + (255 - b) * whiten;
                     }
                 }
 
