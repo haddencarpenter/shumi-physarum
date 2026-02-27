@@ -209,10 +209,10 @@
     </div>
 
     <div id="mode-controls" style="position:fixed;top:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:10;">
-        <button class="btn mode-btn" data-mode="1" onclick="setMode(1)">1 Original</button>
+        <button class="btn mode-btn" data-mode="1" onclick="setMode(1)">1 Mold</button>
         <button class="btn mode-btn" data-mode="2" onclick="setMode(2)">2 Contour</button>
         <button class="btn mode-btn active" data-mode="3" onclick="setMode(3)">3 Ramp</button>
-        <button class="btn mode-btn" data-mode="4" onclick="setMode(4)">4 Edges</button>
+        <button class="btn mode-btn" data-mode="4" onclick="setMode(4)">4 Code</button>
         <button class="btn mode-btn" data-mode="5" onclick="setMode(5)">5 Hybrid</button>
     </div>
     <div id="controls">
@@ -281,12 +281,12 @@ const STENCIL_START = 0;          // frames when ASCII stencil begins accumulati
 const STENCIL_END = 18;           // frames when stencil is fully formed (~0.6s)
 let pulsePhase = 0;
 
-// ── Formation modes (edge-aware) ──
-// 1: Original (dense code, uniform)
-// 2: Contour-priority (code on edges, thinned interiors)
-// 3: Ramp silhouette (density symbols shaped by edge strength)
-// 4: Edges-only (characters only on strong contours)
-// 5: Hybrid (code on contours, sparse ramp fill in flat zones)
+// ── Formation modes ──
+// 1: Mold — pure physarum pixel trails, organic glow, no ASCII
+// 2: Contour — pixel trails masked to edges only, neon wireframe
+// 3: Ramp — ASCII density symbols shaped by edge strength
+// 4: Code — scrolling trading code characters fill mascot shape
+// 5: Hybrid — pixel mold base + faint ASCII overlay
 let formationMode = 3;  // default to Ramp mode
 
 // Algo code texture: real trading code that tiles across the ASCII grid
@@ -966,6 +966,55 @@ function renderTrail(ctx, trail, w, h, P, colors) {
     ctx.globalAlpha = 1;
 }
 
+// Pixel-based trail renderer — organic mold look, no ASCII characters
+// edgeMask: null = render all, Float32Array = multiply alpha by edge strength
+function renderTrailPixel(ctx, trail, w, h, P, colors, edgeMask) {
+    let base = h2r(colors[0]), bright = h2r(colors[1]), hot = h2r(colors[2]);
+    let imgData = ctx.createImageData(w, h);
+    let px = imgData.data;
+    let pulse = Math.sin(pulsePhase);
+    let brightMult = 1 + pulse * PULSE_BRIGHT;
+
+    for (let i = 0; i < w * h; i++) {
+        let v = trail[i] * P.trailBright;
+        if (v < 0.5) {
+            // Background color
+            px[i*4] = base.r; px[i*4+1] = base.g; px[i*4+2] = base.b; px[i*4+3] = 255;
+            continue;
+        }
+        let vP = v * brightMult;
+        // Smooth alpha — quadratic for organic glow
+        let rawA = Math.min(1, v / 40);
+        let alpha = rawA * rawA;
+        // Edge mask: if provided, multiply alpha by edge strength
+        if (edgeMask) alpha *= edgeMask[i];
+        if (alpha < 0.01) {
+            px[i*4] = base.r; px[i*4+1] = base.g; px[i*4+2] = base.b; px[i*4+3] = 255;
+            continue;
+        }
+        // 3-stop color: base → bright → hot
+        let t1 = Math.min(vP / 25, 1);
+        let t2 = Math.min(vP / 60, 1);
+        let r, g, b;
+        if (t2 > 0.3) {
+            let ht = (t2 - 0.3) / 0.7;
+            r = bright.r + (hot.r - bright.r) * ht;
+            g = bright.g + (hot.g - bright.g) * ht;
+            b = bright.b + (hot.b - bright.b) * ht;
+        } else {
+            r = base.r + (bright.r - base.r) * t1;
+            g = base.g + (bright.g - base.g) * t1;
+            b = base.b + (bright.b - base.b) * t1;
+        }
+        // Blend with background
+        px[i*4]   = (base.r * (1 - alpha) + r * alpha) | 0;
+        px[i*4+1] = (base.g * (1 - alpha) + g * alpha) | 0;
+        px[i*4+2] = (base.b * (1 - alpha) + b * alpha) | 0;
+        px[i*4+3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
 // ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
@@ -1226,22 +1275,33 @@ function frame() {
     bgCtx.fillStyle = grad;
     bgCtx.fillRect(0, 0, VW, VH);
 
-    // ── Render mascot (full warmth, bright) ──
-    renderTrail(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
+    // ── Render mascot — mode determines visual style ──
+    // Mode 1: Mold — pure physarum pixel glow, no ASCII
+    // Mode 2: Contour — pixel trails only at edges, neon wireframe
+    // Mode 3: Ramp — ASCII density characters (stencil overlay)
+    // Mode 4: Code — scrolling trading code characters in mascot shape
+    // Mode 5: Hybrid — pixel mold base + faint ASCII stencil on top
 
-    // ── Stencil accumulation: ASCII characters form the mascot shape ──
-    // All modes now use cell.edge (Sobel contour strength) to emphasize outlines.
-    // Mode 1: Original (dense code, uniform)
-    // Mode 2: Contour-priority (code on edges, thin interiors with spacing)
-    // Mode 3: Ramp silhouette (density symbols shaped by edges, no code)
-    // Mode 4: Edges-only (characters only where strong contours exist)
-    // Mode 5: Hybrid (code on contours, sparse ramp fill in interiors)
-    if (stencilGrid && formation > 0) {
+    if (formationMode === 1) {
+        // MOLD: pure organic pixel trails — no ASCII at all
+        renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS, null);
+    } else if (formationMode === 2) {
+        // CONTOUR: pixel trails masked to edges only
+        let edgeMask = densityMap || new Float32Array(MSIZE * MSIZE);
+        renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS, edgeMask);
+    } else if (formationMode === 5) {
+        // HYBRID: pixel mold base, then ASCII overlaid below
+        renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS, null);
+    } else {
+        // Modes 3 & 4: ASCII trail base
+        renderTrail(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
+    }
+    // ── ASCII stencil overlay (modes 3, 4, 5 only — modes 1 & 2 are pure pixel) ──
+    if (stencilGrid && formation > 0 && (formationMode >= 3)) {
         let EDGE_STRONG = window._edgeStrong ?? 0.3;
         let EDGE_WEAK   = window._edgeWeak ?? 0.12;
         let STENCIL_MASTER = window._stencilMaster ?? 0.28;
 
-        // Smaller stencil cells on mobile → more characters → readable face
         let cw = IS_MOBILE ? 6 : CELL_W;
         let ch_ = IS_MOBILE ? 10 : CELL_H;
         let sCols = Math.floor(MSIZE / cw);
@@ -1256,10 +1316,11 @@ function frame() {
 
         let origCols = Math.floor(MSIZE / CELL_W);
         let origRows = Math.floor(MSIZE / CELL_H);
+        // Scroll offset for Code mode (mode 4)
+        let codeScroll = formationMode === 4 ? Math.floor(msFc * 0.15) : 0;
 
         for (let row = 0; row < sRows; row++) {
             for (let col = 0; col < sCols; col++) {
-                // Map mobile cell coords back to stencil grid via nearest neighbor
                 let gridCol = Math.min(origCols - 1, Math.floor((col * cw + cw / 2) / CELL_W));
                 let gridRow = Math.min(origRows - 1, Math.floor((row * ch_ + ch_ / 2) / CELL_H));
                 let cell = stencilGrid[gridRow * origCols + gridCol];
@@ -1267,7 +1328,6 @@ function frame() {
 
                 let isEdge = cell.edge >= EDGE_STRONG;
                 let isMidEdge = cell.edge >= EDGE_WEAK;
-                // Dark features (eyes, nostrils): high alpha but very dark = intentional void
                 let isDarkFeature = cell.a > 0.3 && cell.lum < 0.12;
                 let cellBlend = Math.min(1, (formation - cell.reveal) / 0.3);
                 let lumPulsed = cell.lum + pulse * 0.15;
@@ -1276,10 +1336,7 @@ function frame() {
                 let skipCell = false;
                 let alphaBoost = 1.0;
 
-                // Dark features (eyes, mouth) should be voids — don't render
-                // This creates the recognizable face by leaving dark gaps
                 if (isDarkFeature && !isEdge) { continue; }
-                // Edges bordering dark features get extra emphasis (eye outlines)
                 let nearDark = false;
                 if (isEdge) {
                     for (let dy = -1; dy <= 1 && !nearDark; dy++) {
@@ -1293,37 +1350,8 @@ function frame() {
                     }
                 }
 
-                if (formationMode === 1) {
-                    // Mode 1: Original — all cells get code, but much softer
-                    ch = CODE_BUF[(row * sCols + col) % CODE_LEN];
-                    if (ch === ' ') ch = CODE_BUF[(row * sCols + col + 13) % CODE_LEN];
-
-                } else if (formationMode === 2) {
-                    // Mode 2: Contour-priority — edges get code, interiors heavily thinned
-                    if (isEdge) {
-                        ch = CODE_BUF[(row * sCols + col) % CODE_LEN];
-                        if (ch === ' ') ch = CODE_BUF[(row * sCols + col + 13) % CODE_LEN];
-                        alphaBoost = 1.5;
-                    } else if (isMidEdge) {
-                        if ((row + col) % 3 !== 0) { skipCell = true; }
-                        else {
-                            ch = CODE_BUF[(row * sCols + col) % CODE_LEN];
-                            if (ch === ' ') ch = CODE_BUF[(row * sCols + col + 13) % CODE_LEN];
-                            alphaBoost = 0.5;
-                        }
-                    } else {
-                        // Deep interior: very sparse faint dots
-                        if ((row + col) % 4 !== 0) { skipCell = true; }
-                        else {
-                            let rampIdx = Math.floor(lumPulsed * (CHAR_RAMP.length - 1));
-                            rampIdx = Math.max(1, Math.min(CHAR_RAMP.length - 1, rampIdx));
-                            ch = CHAR_RAMP[rampIdx];
-                            alphaBoost = 0.25;
-                        }
-                    }
-
-                } else if (formationMode === 3) {
-                    // Mode 3: Ramp silhouette — density symbols, edges heavier
+                if (formationMode === 3) {
+                    // RAMP: density symbols, edges heavier
                     let edgeBonus = isEdge ? 2 : (isMidEdge ? 1 : 0);
                     let rampIdx = Math.floor((lumPulsed + cell.edge) * (CHAR_RAMP.length - 1) + rampShift + edgeBonus);
                     rampIdx = Math.max(1, Math.min(CHAR_RAMP.length - 1, rampIdx));
@@ -1332,43 +1360,35 @@ function frame() {
                     alphaBoost = isEdge ? 1.8 : (isMidEdge ? 0.9 : 0.4);
 
                 } else if (formationMode === 4) {
-                    // Mode 4: Edges-only — characters ONLY on contours, nothing else
-                    if (!isMidEdge) { skipCell = true; }
-                    else {
-                        ch = CODE_BUF[(row * sCols + col) % CODE_LEN];
-                        if (ch === ' ') ch = CODE_BUF[(row * sCols + col + 13) % CODE_LEN];
-                        alphaBoost = isEdge ? 2.0 : 0.8;
-                    }
+                    // CODE: scrolling trading code fills the mascot shape
+                    let scrollIdx = ((row + codeScroll) * sCols + col) % CODE_LEN;
+                    ch = CODE_BUF[scrollIdx];
+                    if (ch === ' ') ch = CODE_BUF[(scrollIdx + 7) % CODE_LEN];
+                    // Denser fill — only thin deep interiors slightly
+                    if (!isMidEdge && (row + col) % 2 !== 0) { skipCell = true; }
+                    alphaBoost = isEdge ? 2.0 : (isMidEdge ? 1.2 : 0.6);
 
                 } else if (formationMode === 5) {
-                    // Mode 5: Hybrid — subtle code on contours, whisper-faint ramp fill
+                    // HYBRID: faint ASCII overlay on pixel mold base
+                    // Lighter touch since pixel trails already show structure
                     if (isEdge) {
                         ch = CODE_BUF[(row * sCols + col) % CODE_LEN];
                         if (ch === ' ') ch = CODE_BUF[(row * sCols + col + 13) % CODE_LEN];
-                        alphaBoost = 2.0;
-                    } else if (isMidEdge) {
-                        if ((row + col) % 3 === 0) {
-                            let rampIdx = Math.floor(lumPulsed * (CHAR_RAMP.length - 1) + rampShift);
-                            rampIdx = Math.max(1, Math.min(CHAR_RAMP.length - 1, rampIdx));
-                            ch = CHAR_RAMP[rampIdx];
-                            alphaBoost = 1.0;
-                        } else { skipCell = true; }
-                    } else {
-                        // Deep interior: almost invisible scatter
-                        if ((row + col) % 5 === 0) {
-                            ch = CHAR_RAMP[Math.min(2, Math.floor(lumPulsed * 2) + 1)];
-                            alphaBoost = 0.5;
-                        } else { skipCell = true; }
-                    }
+                        alphaBoost = 1.2;
+                    } else if (isMidEdge && (row + col) % 3 === 0) {
+                        let rampIdx = Math.floor(lumPulsed * (CHAR_RAMP.length - 1) + rampShift);
+                        rampIdx = Math.max(1, Math.min(CHAR_RAMP.length - 1, rampIdx));
+                        ch = CHAR_RAMP[rampIdx];
+                        alphaBoost = 0.5;
+                    } else { skipCell = true; }
                 }
-                // Eye/feature outlines get extra punch
+
                 if (nearDark) { alphaBoost = Math.max(alphaBoost, 2.5); }
 
-                // Blast mode: when master > 1.0, override thinning — fill every cell
+                // Blast mode: fill every cell at full brightness
                 let blast = STENCIL_MASTER > 1.0;
                 if (blast && skipCell) {
                     skipCell = false;
-                    // Give skipped cells a ramp character and moderate alpha
                     let rampIdx = Math.max(1, Math.floor(lumPulsed * (CHAR_RAMP.length - 1)));
                     ch = CHAR_RAMP[Math.min(CHAR_RAMP.length - 1, rampIdx)];
                     alphaBoost = 0.6;
@@ -1377,29 +1397,17 @@ function frame() {
 
                 let r, g, b;
                 if (blast) {
-                    // Blast uses mascot's native red→white, ignoring palette
-                    // Dark red base → vivid red → white, driven by cell luminance
                     let t = Math.min(1, lumPulsed * 1.3);
                     if (t < 0.5) {
-                        // Dark → vivid red
                         let lt = t / 0.5;
-                        r = 60 + 195 * lt;   // 60 → 255
-                        g = 10 + 40 * lt;    // 10 → 50
-                        b = 10 + 30 * lt;    // 10 → 40
+                        r = 60 + 195 * lt; g = 10 + 40 * lt; b = 10 + 30 * lt;
                     } else {
-                        // Vivid red → white
                         let ht = (t - 0.5) / 0.5;
-                        r = 255;
-                        g = 50 + 205 * ht;   // 50 → 255
-                        b = 40 + 215 * ht;   // 40 → 255
+                        r = 255; g = 50 + 205 * ht; b = 40 + 215 * ht;
                     }
-                    // Extra whiten push at high master
                     let whiten = Math.min(0.4, (STENCIL_MASTER - 1.0) * 0.15);
-                    r = r + (255 - r) * whiten;
-                    g = g + (255 - g) * whiten;
-                    b = b + (255 - b) * whiten;
+                    r = r + (255 - r) * whiten; g = g + (255 - g) * whiten; b = b + (255 - b) * whiten;
                 } else {
-                    // Normal color: scales with STENCIL_MASTER
                     let colorPush = STENCIL_MASTER * 2.5;
                     let lumT = Math.min(1, lumPulsed * (0.9 + colorPush * 0.3));
                     let hotMix = 0.3 + colorPush * 0.35;
@@ -1418,9 +1426,7 @@ function frame() {
                     }
                 }
 
-                // Alpha scales quadratically with master — feels linear to the eye
                 let masterAlpha = STENCIL_MASTER * (1 + STENCIL_MASTER);
-                // In blast mode, boost alpha floor so even faint cells show
                 let alphaFloor = blast ? 0.3 : 0;
                 let finalAlpha = Math.min(1, Math.max(alphaFloor, cellBlend * cell.a * masterAlpha * alphaBoost));
                 mascotSimCtx.globalAlpha = finalAlpha;
