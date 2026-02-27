@@ -1384,30 +1384,24 @@ function frame() {
                     rampIdx = Math.max(1, Math.min(CHAR_RAMP.length - 1, rampIdx));
                     ch = CHAR_RAMP[rampIdx];
                     if (!isMidEdge && (row + col) % 3 !== 0) { skipCell = true; }
-                    alphaBoost = isEdge ? 1.8 : (isMidEdge ? 0.9 : 0.4);
+                    alphaBoost = isEdge ? 3.5 : (isMidEdge ? 2.0 : 1.0);
 
                 } else if (formationMode === 2) {
                     // CODE: scrolling trading code fills the mascot shape
                     let scrollIdx = ((row + codeScroll) * sCols + col) % CODE_LEN;
                     ch = CODE_BUF[scrollIdx];
                     if (ch === ' ') ch = CODE_BUF[(scrollIdx + 7) % CODE_LEN];
-                    // Denser fill — only thin deep interiors slightly
-                    if (!isMidEdge && (row + col) % 2 !== 0) { skipCell = true; }
-                    alphaBoost = isEdge ? 2.0 : (isMidEdge ? 1.2 : 0.6);
+                    // Dense fill — face must be recognizable
+                    alphaBoost = isEdge ? 4.0 : (isMidEdge ? 2.5 : 1.5);
 
                 } else if (formationMode === 4) {
-                    // HYBRID: faint ASCII overlay on pixel mold base
-                    // Lighter touch since pixel trails already show structure
-                    if (isEdge) {
-                        ch = CODE_BUF[(row * sCols + col) % CODE_LEN];
-                        if (ch === ' ') ch = CODE_BUF[(row * sCols + col + 13) % CODE_LEN];
-                        alphaBoost = 1.2;
-                    } else if (isMidEdge && (row + col) % 3 === 0) {
-                        let rampIdx = Math.floor(lumPulsed * (CHAR_RAMP.length - 1) + rampShift);
-                        rampIdx = Math.max(1, Math.min(CHAR_RAMP.length - 1, rampIdx));
-                        ch = CHAR_RAMP[rampIdx];
-                        alphaBoost = 0.5;
-                    } else { skipCell = true; }
+                    // HYBRID: ASCII overlay on pixel mold base
+                    let scrollIdx = ((row + codeScroll) * sCols + col) % CODE_LEN;
+                    ch = CODE_BUF[scrollIdx];
+                    if (ch === ' ') ch = CODE_BUF[(scrollIdx + 13) % CODE_LEN];
+                    // Fill the whole face — edges heavier, interior present
+                    if (!isMidEdge && (row + col) % 2 !== 0) { skipCell = true; }
+                    alphaBoost = isEdge ? 3.5 : (isMidEdge ? 2.0 : 1.0);
                 }
 
                 if (nearDark) { alphaBoost = Math.max(alphaBoost, 2.5); }
