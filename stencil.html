@@ -903,9 +903,8 @@ function renderTrail(ctx, trail, w, h, P, colors) {
     ctx.fillStyle = colors[0];
     ctx.fillRect(0, 0, w, h);
 
-    // On mobile: use larger cells to halve draw calls
-    let cellW = IS_MOBILE ? CELL_W * 2 : CELL_W;
-    let cellH = IS_MOBILE ? CELL_H * 2 : CELL_H;
+    let cellW = CELL_W;
+    let cellH = CELL_H;
     let cols = Math.floor(w / cellW);
     let rows = Math.floor(h / cellH);
     let fontSize = cellH - 2;
@@ -972,8 +971,8 @@ function resize() {
 
     // On mobile: render at half resolution, CSS-scale to fill viewport
     if (IS_MOBILE) {
-        VW = Math.floor(screenW * 0.6);
-        VH = Math.floor(screenH * 0.6);
+        VW = Math.floor(screenW * 0.75);
+        VH = Math.floor(screenH * 0.75);
         // CSS stretches canvas to viewport
         bgCanvas.style.width = screenW + 'px';
         bgCanvas.style.height = screenH + 'px';
