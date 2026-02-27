@@ -1320,7 +1320,11 @@ function frame() {
         renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
     } else {
         // Modes 1 & 2: ASCII trail base
+        // During blast, suppress trails so stencil face dominates
+        let savedBoost = _trailBoost;
+        if ((window._stencilMaster ?? 0.28) > 1.0) _trailBoost = 0.3;
         renderTrail(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
+        _trailBoost = savedBoost;
     }
     // ── ASCII stencil overlay (modes 1, 2, 4 — mode 3 is pure pixel) ──
     let STENCIL_MASTER = window._stencilMaster ?? 0.28;
