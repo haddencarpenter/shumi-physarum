@@ -54,6 +54,25 @@
         .hidden-canvas { position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none; width: 0; height: 0; overflow: hidden; }
         /* Composite output for recording */
         #composite { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; opacity: 0; }
+        #watermark {
+            position: fixed; bottom: 58px; right: 14px; z-index: 10;
+            font: 600 14px 'Courier New', monospace; color: #D4A84B; opacity: 0.7;
+            pointer-events: none; text-align: right;
+            text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5);
+        }
+        #hint {
+            position: fixed; bottom: 42px; right: 14px; z-index: 10;
+            font: 11px 'Courier New', monospace; color: #aaa; opacity: 0;
+            pointer-events: none; text-align: right;
+            text-shadow: 0 0 4px rgba(0,0,0,0.8);
+            animation: hintFade 8s ease-out forwards;
+        }
+        @keyframes hintFade {
+            0% { opacity: 0; }
+            5% { opacity: 0.7; }
+            50% { opacity: 0.5; }
+            100% { opacity: 0; }
+        }
         #controls {
             position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 10px; z-index: 10;
@@ -221,6 +240,8 @@
         <button class="btn" onclick="savePNG()">Save PNG</button>
         <button class="btn" onclick="copyLink()">Share</button>
     </div>
+    <div id="watermark"></div>
+    <div id="hint"></div>
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -996,7 +1017,16 @@ function renderTrailPixel(ctx, trail, w, h, P, colors, edgeMask) {
         let rawA = Math.min(1, v / 40);
         let alpha = rawA * rawA;
         // Edge mask: if provided, multiply alpha by edge strength
-        if (edgeMask) alpha *= edgeMask[i];
+        // During boost, aggressively soften so the full shape floods in
+        if (edgeMask) {
+            let em = edgeMask[i];
+            if (boost > 1) {
+                // Blend toward fully filled: at boost=4, ~70% fill + 30% edge-weighted
+                let fill = Math.min(1, boost / 5);
+                em = em * (1 - fill) + fill;
+            }
+            alpha *= em;
+        }
         if (alpha < 0.01) {
             px[i*4] = base.r; px[i*4+1] = base.g; px[i*4+2] = base.b; px[i*4+3] = 255;
             continue;
@@ -1456,25 +1486,6 @@ function frame() {
     mascotCtx.globalCompositeOperation = 'source-over';
 
 
-    // ── Live watermark on BG canvas ──
-    bgCtx.save();
-    bgCtx.font = '12px "Courier New"';
-    bgCtx.textAlign = 'right';
-    bgCtx.textBaseline = 'bottom';
-    // Dark backdrop for readability against busy ASCII
-    bgCtx.globalAlpha = 0.25;
-    bgCtx.fillStyle = '#000';
-    bgCtx.fillRect(VW - 120, VH - 32, 115, 28);
-    bgCtx.globalAlpha = 0.35;
-    bgCtx.fillStyle = '#D4A84B';
-    bgCtx.fillText(seed, VW - 10, VH - 10);
-    // Easter egg hint — fades out over first 5 seconds
-    if (bgFc < 150) {
-        let hintAlpha = 0.25 * Math.max(0, 1 - bgFc / 150);
-        bgCtx.globalAlpha = hintAlpha;
-        bgCtx.fillStyle = '#888';
-        bgCtx.fillText(IS_MOBILE ? 'tap & hold' : 'hold ␣', VW - 10, VH - 24);
-    }
     bgCtx.restore();
 
     // ── Composite for recording ──
@@ -1491,6 +1502,13 @@ function frame() {
         statusEl.classList.add('show');
         clearTimeout(statusEl._fadeTimer);
         statusEl._fadeTimer = setTimeout(() => statusEl.classList.remove('show'), 3000);
+        // Update HTML watermark + restart hint animation
+        document.getElementById('watermark').textContent = seed;
+        let hintEl = document.getElementById('hint');
+        hintEl.textContent = IS_MOBILE ? 'tap & hold' : 'hold ␣';
+        hintEl.style.animation = 'none';
+        hintEl.offsetHeight; // force reflow
+        hintEl.style.animation = 'hintFade 6s ease-out forwards';
     }
     requestAnimationFrame(frame);
 }
