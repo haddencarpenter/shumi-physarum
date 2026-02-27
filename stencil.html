@@ -204,9 +204,9 @@
     </div>
 
     <div id="mode-controls" style="position:fixed;top:20px;right:20px;display:flex;flex-direction:column;gap:6px;z-index:10;">
-        <button class="btn mode-btn active" data-mode="1" onclick="setMode(1)">1 Original</button>
+        <button class="btn mode-btn" data-mode="1" onclick="setMode(1)">1 Original</button>
         <button class="btn mode-btn" data-mode="2" onclick="setMode(2)">2 Contour</button>
-        <button class="btn mode-btn" data-mode="3" onclick="setMode(3)">3 Ramp</button>
+        <button class="btn mode-btn active" data-mode="3" onclick="setMode(3)">3 Ramp</button>
         <button class="btn mode-btn" data-mode="4" onclick="setMode(4)">4 Edges</button>
         <button class="btn mode-btn" data-mode="5" onclick="setMode(5)">5 Hybrid</button>
     </div>
@@ -273,7 +273,7 @@ const PULSE_SPEED = 0.055;        // radians per frame (~3.5s full cycle, more l
 const PULSE_BRIGHT = 0.25;        // +/-25% brightness oscillation
 const PULSE_RAMP = 1.2;           // +/-1.2 character levels shift
 const STENCIL_START = 0;          // frames when ASCII stencil begins accumulating (immediate)
-const STENCIL_END = 55;           // frames when stencil is fully formed (same cadence as before)
+const STENCIL_END = 18;           // frames when stencil is fully formed (~0.6s)
 let pulsePhase = 0;
 
 // ── Formation modes (edge-aware) ──
@@ -282,7 +282,7 @@ let pulsePhase = 0;
 // 3: Ramp silhouette (density symbols shaped by edge strength)
 // 4: Edges-only (characters only on strong contours)
 // 5: Hybrid (code on contours, sparse ramp fill in flat zones)
-let formationMode = 1;
+let formationMode = 3;  // default to Ramp mode
 
 // Algo code texture: real trading code that tiles across the ASCII grid
 const CODE_LINES = [
