@@ -1319,10 +1319,9 @@ function frame() {
         // HYBRID: pixel mold base, then ASCII overlaid below
         renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
     } else {
-        // Modes 1 & 2: ASCII trail base
-        // During blast, suppress trails so stencil face dominates
+        // Modes 1 & 2: ASCII trail base (trails unaffected by blast)
         let savedBoost = _trailBoost;
-        if ((window._stencilMaster ?? 0.28) > 1.0) _trailBoost = 0.3;
+        _trailBoost = 1.0;  // never boost ASCII trails — blast only affects stencil
         renderTrail(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
         _trailBoost = savedBoost;
     }
@@ -1389,24 +1388,23 @@ function frame() {
                     rampIdx = Math.max(1, Math.min(CHAR_RAMP.length - 1, rampIdx));
                     ch = CHAR_RAMP[rampIdx];
                     if (!isMidEdge && (row + col) % 3 !== 0) { skipCell = true; }
-                    alphaBoost = isEdge ? 3.5 : (isMidEdge ? 2.0 : 1.0);
+                    alphaBoost = isEdge ? 1.8 : (isMidEdge ? 0.9 : 0.4);
 
                 } else if (formationMode === 2) {
                     // CODE: scrolling trading code fills the mascot shape
                     let scrollIdx = ((row + codeScroll) * sCols + col) % CODE_LEN;
                     ch = CODE_BUF[scrollIdx];
                     if (ch === ' ') ch = CODE_BUF[(scrollIdx + 7) % CODE_LEN];
-                    // Dense fill — face must be recognizable
-                    alphaBoost = isEdge ? 4.0 : (isMidEdge ? 2.5 : 1.5);
+                    if (!isMidEdge && (row + col) % 2 !== 0) { skipCell = true; }
+                    alphaBoost = isEdge ? 2.0 : (isMidEdge ? 1.2 : 0.6);
 
                 } else if (formationMode === 4) {
                     // HYBRID: ASCII overlay on pixel mold base
                     let scrollIdx = ((row + codeScroll) * sCols + col) % CODE_LEN;
                     ch = CODE_BUF[scrollIdx];
                     if (ch === ' ') ch = CODE_BUF[(scrollIdx + 13) % CODE_LEN];
-                    // Fill the whole face — edges heavier, interior present
                     if (!isMidEdge && (row + col) % 2 !== 0) { skipCell = true; }
-                    alphaBoost = isEdge ? 3.5 : (isMidEdge ? 2.0 : 1.0);
+                    alphaBoost = isEdge ? 1.5 : (isMidEdge ? 0.8 : 0.4);
                 }
 
                 if (nearDark) { alphaBoost = Math.max(alphaBoost, 2.5); }
