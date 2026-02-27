@@ -1159,7 +1159,9 @@ function frame() {
     pulsePhase += (window._pulseSpeed ?? PULSE_SPEED);
 
     // Shared formation factor: drives both trail inflow and mascot illumination
-    let formation = Math.min(1, Math.max(0, (msFc - STENCIL_START) / (STENCIL_END - STENCIL_START)));
+    // On mobile, form stencil in ~8 frames instead of 18 (mobile fps is lower)
+    let stencilEnd = IS_MOBILE ? 8 : STENCIL_END;
+    let formation = Math.min(1, Math.max(0, (msFc - STENCIL_START) / (stencilEnd - STENCIL_START)));
 
     // ── Background sim step — spawn from mascot ring, radiating outward ──
     if (bgAgents.length < BG.agentCount) {
@@ -1497,11 +1499,11 @@ function restart() {
     // On mobile: auto-flash the stencil once it's formed
     if (IS_MOBILE) {
         let prev = window._stencilMaster ?? 0.28;
-        // Wait for stencil to fully form (~18 frames ≈ 1s on mobile), then blast for 2.5s
+        // Flash at 600ms — stencil forms fast enough by then
         setTimeout(() => {
             window._stencilMaster = 3.0;
             setTimeout(() => { window._stencilMaster = prev; }, 2500);
-        }, 1200);
+        }, 600);
     }
 }
 
