@@ -1648,7 +1648,7 @@ window.addEventListener('keyup', (e) => {
 async function boot() {
     // Apply URL settings before init
     if (_urlMode) { formationMode = parseInt(_urlMode) || 1; setMode(formationMode); }
-    if (_urlMaster) window._stencilMaster = parseFloat(_urlMaster);
+    if (_urlMaster) window._stencilMaster = Math.min(1.0, parseFloat(_urlMaster));
     if (_urlEdgeS) window._edgeStrong = parseFloat(_urlEdgeS);
     if (_urlEdgeW) window._edgeWeak = parseFloat(_urlEdgeW);
 
@@ -1666,7 +1666,7 @@ function updateShareURL() {
     p.set('seed', seed);
     if (formationMode !== 1) p.set('mode', formationMode);
     let m = window._stencilMaster;
-    if (m !== undefined && m !== 0.28) p.set('master', m.toFixed(2));
+    if (m !== undefined && m !== 0.28 && m <= 1.0) p.set('master', m.toFixed(2));
     let es = window._edgeStrong;
     if (es !== undefined && es !== 0.3) p.set('es', es.toFixed(2));
     let ew = window._edgeWeak;
