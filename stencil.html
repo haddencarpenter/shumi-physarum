@@ -1641,25 +1641,22 @@ function autoFlash() {
         }, 1500);
     }, delay);
 }
+let _blastTimer = null;
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && !e.target.matches('input, textarea, select')) {
         e.preventDefault();
-        if (_savedMaster === null) {
-            _savedMaster = window._stencilMaster ?? 0.28;
-            window._stencilMaster = 3.0;
-            _trailBoost = 4.0;
-            let sl = document.getElementById('stencilMaster');
-            if (sl) sl.value = 3.0;
-        }
-    }
-});
-window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space' && _savedMaster !== null) {
-        window._stencilMaster = _savedMaster;
-        _trailBoost = 1.0;
-        let sl = document.getElementById('stencilMaster');
-        if (sl) sl.value = _savedMaster;
-        _savedMaster = null;
+        // Tap to flash: blast briefly then auto-restore
+        if (_blastTimer) clearTimeout(_blastTimer);
+        let prev = _savedMaster ?? window._stencilMaster ?? 0.28;
+        _savedMaster = prev;
+        window._stencilMaster = 3.0;
+        _trailBoost = 4.0;
+        _blastTimer = setTimeout(() => {
+            window._stencilMaster = prev;
+            _trailBoost = 1.0;
+            _savedMaster = null;
+            _blastTimer = null;
+        }, 1500);
     }
 });
 
