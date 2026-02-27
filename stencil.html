@@ -1330,30 +1330,55 @@ function frame() {
                         } else { skipCell = true; }
                     }
                 }
+                // Blast mode: when master > 1.0, override thinning — fill every cell
+                let blast = STENCIL_MASTER > 1.0;
+                if (blast && skipCell) {
+                    skipCell = false;
+                    // Give skipped cells a ramp character and moderate alpha
+                    let rampIdx = Math.max(1, Math.floor(lumPulsed * (CHAR_RAMP.length - 1)));
+                    ch = CHAR_RAMP[Math.min(CHAR_RAMP.length - 1, rampIdx)];
+                    alphaBoost = 0.6;
+                }
                 if (skipCell) continue;
 
-                // Color: scales with STENCIL_MASTER — subtle at low, full palette push at high
-                let colorPush = STENCIL_MASTER * 2.5; // 0 at master=0, 2.0 at master=0.8
-                let lumT = Math.min(1, lumPulsed * (0.9 + colorPush * 0.3));
                 let r, g, b;
-                let hotMix = 0.3 + colorPush * 0.35; // 0.3 at low master, up to 1.0 at max
-                let baseMix = 0.5 + colorPush * 0.25;
-                let t = 0.2 + lumT * (0.4 + colorPush * 0.15);
-                if (t > 0.5) {
-                    let ht = (t - 0.5) / 0.5;
-                    r = bright.r + (hot.r - bright.r) * ht * hotMix;
-                    g = bright.g + (hot.g - bright.g) * ht * hotMix;
-                    b = bright.b + (hot.b - bright.b) * ht * hotMix;
+                if (blast) {
+                    // Full bright: lerp straight from palette bright → hot based on lum
+                    let t = Math.min(1, lumPulsed * 1.2);
+                    r = bright.r + (hot.r - bright.r) * t;
+                    g = bright.g + (hot.g - bright.g) * t;
+                    b = bright.b + (hot.b - bright.b) * t;
+                    // Push toward white at very high master
+                    let whiten = Math.min(1, (STENCIL_MASTER - 1.0) * 0.3);
+                    r = r + (255 - r) * whiten;
+                    g = g + (255 - g) * whiten;
+                    b = b + (255 - b) * whiten;
                 } else {
-                    let bt = t / 0.5;
-                    r = bright.r * bt * baseMix + bright.r * 0.15;
-                    g = bright.g * bt * baseMix + bright.g * 0.15;
-                    b = bright.b * bt * baseMix + bright.b * 0.15;
+                    // Normal color: scales with STENCIL_MASTER
+                    let colorPush = STENCIL_MASTER * 2.5;
+                    let lumT = Math.min(1, lumPulsed * (0.9 + colorPush * 0.3));
+                    let hotMix = 0.3 + colorPush * 0.35;
+                    let baseMix = 0.5 + colorPush * 0.25;
+                    let t = 0.2 + lumT * (0.4 + colorPush * 0.15);
+                    if (t > 0.5) {
+                        let ht = (t - 0.5) / 0.5;
+                        r = bright.r + (hot.r - bright.r) * ht * hotMix;
+                        g = bright.g + (hot.g - bright.g) * ht * hotMix;
+                        b = bright.b + (hot.b - bright.b) * ht * hotMix;
+                    } else {
+                        let bt = t / 0.5;
+                        r = bright.r * bt * baseMix + bright.r * 0.15;
+                        g = bright.g * bt * baseMix + bright.g * 0.15;
+                        b = bright.b * bt * baseMix + bright.b * 0.15;
+                    }
                 }
 
                 // Alpha scales quadratically with master — feels linear to the eye
                 let masterAlpha = STENCIL_MASTER * (1 + STENCIL_MASTER);
-                mascotSimCtx.globalAlpha = Math.min(1, cellBlend * cell.a * masterAlpha * alphaBoost);
+                // In blast mode, boost alpha floor so even faint cells show
+                let alphaFloor = blast ? 0.3 : 0;
+                let finalAlpha = Math.min(1, Math.max(alphaFloor, cellBlend * cell.a * masterAlpha * alphaBoost));
+                mascotSimCtx.globalAlpha = finalAlpha;
                 mascotSimCtx.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
                 mascotSimCtx.fillText(ch, col * cw + Math.floor(cw / 2), row * ch_);
             }
