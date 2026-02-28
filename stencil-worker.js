@@ -1031,6 +1031,7 @@ self.onmessage = function(e) {
         case 'init': {
             seed = msg.seed;
             IS_MOBILE = msg.IS_MOBILE;
+            let IS_LP = msg.IS_LP || false;
             VW = msg.VW;
             VH = msg.VH;
             MSIZE = msg.MSIZE;
@@ -1050,8 +1051,20 @@ self.onmessage = function(e) {
                 _fillDensity = msg.params.fillDensity ?? 3;
             }
 
-            // Apply mobile scaling
-            if (IS_MOBILE) {
+            // Apply LP scaling — lightweight for landing pages
+            if (IS_LP) {
+                BG.agentCount = Math.round(8000 * 0.30);
+                MS.agentCount = Math.round(5500 * 0.30);
+                BG.stepsPerFrame = Math.max(2, Math.round(5 * 0.50));
+                MS.stepsPerFrame = Math.max(2, Math.round(5 * 0.50));
+                BG.spawnRate = Math.round(140 * 0.30);
+                MS.spawnRate = Math.round(70 * 0.30);
+                BG.initialBatch = Math.round(3000 * 0.30);
+                MS.initialBatch = Math.round(1400 * 0.30);
+                BG.trailBright = 1.3 * 1.8;
+                MS.trailBright = 2.4 * 1.8;
+                if (_stencilMaster === 0.28) _stencilMaster = 0.45;
+            } else if (IS_MOBILE) {
                 BG.agentCount = Math.round(8000 * 0.60);
                 MS.agentCount = Math.round(5500 * 0.60);
                 BG.stepsPerFrame = Math.max(3, Math.round(5 * 0.65));

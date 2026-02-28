@@ -194,9 +194,14 @@
             border-radius: 50%; cursor: pointer;
         }
         #mobile-stencil-slider .vd { min-width: 30px; text-align: right; color: #D4A84B; font: 10px 'Courier New', monospace; }
+        /* LP mode: hide all UI chrome */
+        body.lp #toggle-panel, body.lp #settings-panel, body.lp #mode-controls,
+        body.lp #controls, body.lp #watermark, body.lp #hint, body.lp #status,
+        body.lp #mobile-stencil-slider { display: none !important; }
     </style>
 </head>
 <body>
+    <script>if(new URLSearchParams(location.search).has('lp'))document.body.classList.add('lp');</script>
     <!-- Background physarum: full viewport -->
     <canvas id="bg"></canvas>
     <!-- Ghost afterimage: barely perceptible original mascot, fades as trails build -->
@@ -693,9 +698,25 @@ let running = false;
 // ── Mobile detection & performance scaling ──
 const IS_MOBILE = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
     || (window.innerWidth <= 768 && 'ontouchstart' in window);
+const IS_LP = _urlParams.has('lp');  // Landing page lightweight mode
 const PERF_SCALE = IS_MOBILE ? 0.5 : 1.0;  // halve everything on mobile
 
-if (IS_MOBILE) {
+if (IS_LP) {
+    // ~30% of desktop agents — coexist with other page content
+    BG.agentCount = Math.round(BG.agentCount * 0.30);
+    MS.agentCount = Math.round(MS.agentCount * 0.30);
+    BG.stepsPerFrame = Math.max(2, Math.round(BG.stepsPerFrame * 0.50));
+    MS.stepsPerFrame = Math.max(2, Math.round(MS.stepsPerFrame * 0.50));
+    BG.spawnRate = Math.round(BG.spawnRate * 0.30);
+    MS.spawnRate = Math.round(MS.spawnRate * 0.30);
+    BG.initialBatch = Math.round(BG.initialBatch * 0.30);
+    MS.initialBatch = Math.round(MS.initialBatch * 0.30);
+    // Compensate brightness for fewer agents
+    BG.trailBright *= 1.8;
+    MS.trailBright *= 1.8;
+    // Slightly higher stencil presence
+    window._stencilMaster = 0.45;
+} else if (IS_MOBILE) {
     // ~60% of desktop agent populations (up from 45%)
     BG.agentCount = Math.round(BG.agentCount * 0.60);
     MS.agentCount = Math.round(MS.agentCount * 0.60);
@@ -2038,6 +2059,7 @@ function startWorkerMode() {
         type: 'init',
         seed: seed,
         IS_MOBILE: IS_MOBILE,
+        IS_LP: IS_LP,
         VW: VW,
         VH: VH,
         MSIZE: MSIZE,
