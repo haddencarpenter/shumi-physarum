@@ -722,7 +722,10 @@ if (IS_LP) {
     // BG filaments need to pop
     BG.trailBright *= 2.2;
     MS.trailBright *= 1.4;
-    window._stencilMaster = 0.40;
+    // Start in blast — dramatic reveal on load
+    window._stencilMaster = 3.0;
+    window._trailBoost = 4.0;
+    window._lpBlastStart = true;
 } else if (IS_MOBILE) {
     // ~60% of desktop agent populations (up from 45%)
     BG.agentCount = Math.round(BG.agentCount * 0.60);
@@ -1463,6 +1466,26 @@ function frame() {
     if (!running) return;
     bgFc++; msFc++;
     pulsePhase += (window._pulseSpeed ?? PULSE_SPEED);
+
+    // LP blast fade-down: hold blast briefly then ease to normal
+    if (window._lpBlastStart) {
+        let LP_BLAST_HOLD = 60;   // hold full blast ~1s
+        let LP_BLAST_FADE = 150;  // fade over ~2.5s
+        let LP_TARGET_MASTER = 0.40;
+        let LP_TARGET_BOOST = 1.0;
+        if (msFc <= LP_BLAST_HOLD) {
+            // hold at blast
+        } else if (msFc <= LP_BLAST_HOLD + LP_BLAST_FADE) {
+            let t = (msFc - LP_BLAST_HOLD) / LP_BLAST_FADE;
+            let ease = t * t * (3 - 2 * t); // smoothstep
+            window._stencilMaster = 3.0 + (LP_TARGET_MASTER - 3.0) * ease;
+            _trailBoost = 4.0 + (LP_TARGET_BOOST - 4.0) * ease;
+        } else {
+            window._stencilMaster = LP_TARGET_MASTER;
+            _trailBoost = LP_TARGET_BOOST;
+            window._lpBlastStart = false; // done fading
+        }
+    }
 
     // Shared formation factor: drives both trail inflow and mascot illumination
     // On mobile, form stencil in ~8 frames instead of 18 (mobile fps is lower)

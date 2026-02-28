@@ -130,6 +130,7 @@ let ghostOffscreen, ghostOffCtx;
 
 // Palette state
 let IS_LP = false;
+let _lpBlastStart = false;
 let activePalette = PALETTES[0];
 let activeTextureName = 'standard';
 let COLORS = [...activePalette.mascot];
@@ -775,6 +776,26 @@ function handleTick() {
     bgFc++; msFc++;
     pulsePhase += (_pulseSpeed || PULSE_SPEED);
 
+    // LP blast fade-down: hold blast briefly then ease to normal
+    if (_lpBlastStart) {
+        let LP_BLAST_HOLD = 60;
+        let LP_BLAST_FADE = 150;
+        let LP_TARGET_MASTER = 0.40;
+        let LP_TARGET_BOOST = 1.0;
+        if (msFc <= LP_BLAST_HOLD) {
+            // hold at blast
+        } else if (msFc <= LP_BLAST_HOLD + LP_BLAST_FADE) {
+            let t = (msFc - LP_BLAST_HOLD) / LP_BLAST_FADE;
+            let ease = t * t * (3 - 2 * t);
+            _stencilMaster = 3.0 + (LP_TARGET_MASTER - 3.0) * ease;
+            _trailBoost = 4.0 + (LP_TARGET_BOOST - 4.0) * ease;
+        } else {
+            _stencilMaster = LP_TARGET_MASTER;
+            _trailBoost = LP_TARGET_BOOST;
+            _lpBlastStart = false;
+        }
+    }
+
     let stencilEnd = _stencilEnd || (IS_MOBILE ? 45 : STENCIL_END);
     let formationLinear = Math.min(1, Math.max(0, (msFc - STENCIL_START) / (stencilEnd - STENCIL_START)));
     let formation = formationLinear * formationLinear;
@@ -1068,7 +1089,12 @@ self.onmessage = function(e) {
                 BG.spawnRate = Math.round(140 * 1.5);
                 BG.trailBright = 1.3 * 2.2;
                 MS.trailBright = 2.4 * 1.4;
-                if (_stencilMaster === 0.28) _stencilMaster = 0.40;
+                // Keep blast start value (3.0) if set, otherwise use LP default
+                if (_stencilMaster > 1.0) {
+                    _lpBlastStart = true;
+                } else if (_stencilMaster === 0.28) {
+                    _stencilMaster = 0.40;
+                }
             } else if (IS_MOBILE) {
                 BG.agentCount = Math.round(8000 * 0.60);
                 MS.agentCount = Math.round(5500 * 0.60);
