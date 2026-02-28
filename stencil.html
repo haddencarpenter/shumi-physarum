@@ -194,10 +194,13 @@
             border-radius: 50%; cursor: pointer;
         }
         #mobile-stencil-slider .vd { min-width: 30px; text-align: right; color: #D4A84B; font: 10px 'Courier New', monospace; }
-        /* LP mode: hide all UI chrome */
+        /* LP mode: hide all UI chrome, kill halo glow */
         body.lp #toggle-panel, body.lp #settings-panel, body.lp #mode-controls,
         body.lp #controls, body.lp #watermark, body.lp #hint, body.lp #status,
         body.lp #mobile-stencil-slider { display: none !important; }
+        body.lp #mascot-layer, body.lp #mascot-layer.entered { animation: entrance 1.2s cubic-bezier(0.16,1,0.3,1) forwards !important; filter: none !important; }
+        body.lp #ghost-layer, body.lp #resurface-layer { filter: none !important; }
+        body.lp #bg { animation: none !important; filter: none !important; }
     </style>
 </head>
 <body>
@@ -512,6 +515,11 @@ function selectPalette(seed) {
     COLORS = activePalette.mascot.map(c => driftColor(c, hDrift, sDrift, lDrift));
     BG_COLORS = activePalette.bg.map(c => driftColor(c, hDrift * 0.6, sDrift * 0.4, lDrift * 0.3));
 
+    // LP mode: use mascot colors for BG filaments so they're visible
+    if (IS_LP) {
+        BG_COLORS = [BG_COLORS[0], COLORS[1], COLORS[2]];
+    }
+
     // Apply texture profile (decoupled from palette)
     let tex = TEXTURES[activeTextureName] || TEXTURES.standard;
     let bgTex = tex.bg;
@@ -711,8 +719,8 @@ if (IS_LP) {
     MS.spawnRate = Math.round(MS.spawnRate * 0.35);
     BG.initialBatch = Math.round(BG.initialBatch * 0.50);
     MS.initialBatch = Math.round(MS.initialBatch * 0.35);
-    // Mild brightness compensation
-    BG.trailBright *= 1.3;
+    // BG filaments need to pop — boost trail brightness significantly
+    BG.trailBright *= 2.2;
     MS.trailBright *= 1.4;
     // Slightly higher stencil presence
     window._stencilMaster = 0.40;
@@ -1513,6 +1521,8 @@ function frame() {
     bgCtx.drawImage(bgSimCanvas, 0, 0);
 
     // Atmospheric vignette — tighter falloff centered on mascot, creates depth
+    // Skip in LP mode so filaments stay visible at edges
+    if (IS_LP) { /* no vignette */ } else {
     let vigR = Math.max(VW, VH) * 0.50;
     let grad = bgCtx.createRadialGradient(VW/2, VH/2, MSIZE * 0.18, VW/2, VH/2, vigR);
     let vigFade = Math.min(1, bgFc * 0.008);
@@ -1522,6 +1532,7 @@ function frame() {
     grad.addColorStop(1, 'rgba(13,13,13,0)');
     bgCtx.fillStyle = grad;
     bgCtx.fillRect(0, 0, VW, VH);
+    } // end vignette
 
     // ── Render mascot — mode determines visual style ──
     // Mode 1: Ramp — ASCII density characters (stencil overlay)

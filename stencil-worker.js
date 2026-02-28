@@ -129,6 +129,7 @@ let mascotOffscreen, mascotOffCtx;
 let ghostOffscreen, ghostOffCtx;
 
 // Palette state
+let IS_LP = false;
 let activePalette = PALETTES[0];
 let activeTextureName = 'standard';
 let COLORS = [...activePalette.mascot];
@@ -254,6 +255,11 @@ function selectPalette(s) {
 
     COLORS = activePalette.mascot.map(c => driftColor(c, hDrift, sDrift, lDrift));
     BG_COLORS = activePalette.bg.map(c => driftColor(c, hDrift * 0.6, sDrift * 0.4, lDrift * 0.3));
+
+    // LP mode: use mascot colors for BG filaments so they're visible
+    if (IS_LP) {
+        BG_COLORS = [BG_COLORS[0], COLORS[1], COLORS[2]];
+    }
 
     let tex = TEXTURES[activeTextureName] || TEXTURES.standard;
     let bgTex = tex.bg;
@@ -1031,7 +1037,7 @@ self.onmessage = function(e) {
         case 'init': {
             seed = msg.seed;
             IS_MOBILE = msg.IS_MOBILE;
-            let IS_LP = msg.IS_LP || false;
+            IS_LP = msg.IS_LP || false;
             VW = msg.VW;
             VH = msg.VH;
             MSIZE = msg.MSIZE;
@@ -1061,7 +1067,7 @@ self.onmessage = function(e) {
                 MS.spawnRate = Math.round(70 * 0.35);
                 BG.initialBatch = Math.round(3000 * 0.50);
                 MS.initialBatch = Math.round(1400 * 0.35);
-                BG.trailBright = 1.3 * 1.3;
+                BG.trailBright = 1.3 * 2.2;
                 MS.trailBright = 2.4 * 1.4;
                 if (_stencilMaster === 0.28) _stencilMaster = 0.40;
             } else if (IS_MOBILE) {
