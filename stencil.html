@@ -1992,11 +1992,17 @@ function startWorkerMode() {
 }
 
 function onWorkerReady(msg) {
-    // Draw ghost bitmap
+    // Draw ghost bitmap with feathered mask (soft edges)
     let gCtx = ghostCanvas.getContext('2d');
     gCtx.clearRect(0, 0, MSIZE, MSIZE);
     gCtx.drawImage(msg.ghostBitmap, 0, 0);
     msg.ghostBitmap.close();
+    // Apply feathered mask so ghost has soft dissolving edges, not hard silhouette
+    if (featheredMask) {
+        gCtx.globalCompositeOperation = 'destination-in';
+        gCtx.drawImage(featheredMask, 0, 0);
+        gCtx.globalCompositeOperation = 'source-over';
+    }
     ghostCanvas.classList.add('visible');
     ghostCanvas.style.opacity = '1';
 
