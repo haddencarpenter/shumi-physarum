@@ -220,59 +220,59 @@
             <div class="panel-section">
                 <h3>Background Network</h3>
                 <h4>Colony</h4>
-                <div class="sg"><label>Agent Count</label><div class="sl"><input type="range" id="s-bg-agentCount" min="2000" max="15000" step="500" oninput="BG.agentCount=+this.value;sv(this)"><span class="vd" id="s-bg-agentCount-v"></span></div></div>
-                <div class="sg"><label>Speed</label><div class="sl"><input type="range" id="s-bg-speed" min="2" max="14" step="0.2" oninput="BG.speed=+this.value;sv(this)"><span class="vd" id="s-bg-speed-v"></span></div></div>
-                <div class="sg"><label>Sensor Distance</label><div class="sl"><input type="range" id="s-bg-sensorDist" min="8" max="40" step="1" oninput="BG.sensorDist=+this.value;sv(this)"><span class="vd" id="s-bg-sensorDist-v"></span></div></div>
-                <div class="sg"><label>Sensor Angle</label><div class="sl"><input type="range" id="s-bg-sensorAngle" min="15" max="70" step="1" oninput="BG.sensorAngle=+this.value*Math.PI/180;sv(this)"><span class="vd" id="s-bg-sensorAngle-v"></span></div></div>
-                <div class="sg"><label>Turn Speed</label><div class="sl"><input type="range" id="s-bg-turnSpeed" min="10" max="45" step="1" oninput="BG.turnSpeed=+this.value*Math.PI/180;sv(this)"><span class="vd" id="s-bg-turnSpeed-v"></span></div></div>
-                <div class="sg"><label>Steps/Frame</label><div class="sl"><input type="range" id="s-bg-stepsPerFrame" min="1" max="10" step="1" oninput="BG.stepsPerFrame=+this.value;sv(this)"><span class="vd" id="s-bg-stepsPerFrame-v"></span></div></div>
-                <div class="sg"><label>Spawn Rate</label><div class="sl"><input type="range" id="s-bg-spawnRate" min="20" max="300" step="10" oninput="BG.spawnRate=+this.value;sv(this)"><span class="vd" id="s-bg-spawnRate-v"></span></div></div>
+                <div class="sg"><label>Agent Count</label><div class="sl"><input type="range" id="s-bg-agentCount" min="2000" max="15000" step="500" oninput="BG.agentCount=+this.value;sv(this);workerUpdateSim('BG','agentCount',+this.value)"><span class="vd" id="s-bg-agentCount-v"></span></div></div>
+                <div class="sg"><label>Speed</label><div class="sl"><input type="range" id="s-bg-speed" min="2" max="14" step="0.2" oninput="BG.speed=+this.value;sv(this);workerUpdateSim('BG','speed',+this.value)"><span class="vd" id="s-bg-speed-v"></span></div></div>
+                <div class="sg"><label>Sensor Distance</label><div class="sl"><input type="range" id="s-bg-sensorDist" min="8" max="40" step="1" oninput="BG.sensorDist=+this.value;sv(this);workerUpdateSim('BG','sensorDist',+this.value)"><span class="vd" id="s-bg-sensorDist-v"></span></div></div>
+                <div class="sg"><label>Sensor Angle</label><div class="sl"><input type="range" id="s-bg-sensorAngle" min="15" max="70" step="1" oninput="BG.sensorAngle=+this.value*Math.PI/180;sv(this);workerUpdateSim('BG','sensorAngle',+this.value*Math.PI/180)"><span class="vd" id="s-bg-sensorAngle-v"></span></div></div>
+                <div class="sg"><label>Turn Speed</label><div class="sl"><input type="range" id="s-bg-turnSpeed" min="10" max="45" step="1" oninput="BG.turnSpeed=+this.value*Math.PI/180;sv(this);workerUpdateSim('BG','turnSpeed',+this.value*Math.PI/180)"><span class="vd" id="s-bg-turnSpeed-v"></span></div></div>
+                <div class="sg"><label>Steps/Frame</label><div class="sl"><input type="range" id="s-bg-stepsPerFrame" min="1" max="10" step="1" oninput="BG.stepsPerFrame=+this.value;sv(this);workerUpdateSim('BG','stepsPerFrame',+this.value)"><span class="vd" id="s-bg-stepsPerFrame-v"></span></div></div>
+                <div class="sg"><label>Spawn Rate</label><div class="sl"><input type="range" id="s-bg-spawnRate" min="20" max="300" step="10" oninput="BG.spawnRate=+this.value;sv(this);workerUpdateSim('BG','spawnRate',+this.value)"><span class="vd" id="s-bg-spawnRate-v"></span></div></div>
                 <h4>Chemistry</h4>
-                <div class="sg"><label>Deposit</label><div class="sl"><input type="range" id="s-bg-deposit" min="3" max="30" step="1" oninput="BG.deposit=+this.value;sv(this)"><span class="vd" id="s-bg-deposit-v"></span></div></div>
-                <div class="sg"><label>Decay</label><div class="sl"><input type="range" id="s-bg-decay" min="0.930" max="0.990" step="0.001" oninput="BG.decay=+this.value;sv(this)"><span class="vd" id="s-bg-decay-v"></span></div></div>
-                <div class="sg"><label>Diffusion</label><div class="sl"><input type="range" id="s-bg-diffusion" min="0.05" max="0.55" step="0.01" oninput="BG.diffusion=+this.value;sv(this)"><span class="vd" id="s-bg-diffusion-v"></span></div></div>
+                <div class="sg"><label>Deposit</label><div class="sl"><input type="range" id="s-bg-deposit" min="3" max="30" step="1" oninput="BG.deposit=+this.value;sv(this);workerUpdateSim('BG','deposit',+this.value)"><span class="vd" id="s-bg-deposit-v"></span></div></div>
+                <div class="sg"><label>Decay</label><div class="sl"><input type="range" id="s-bg-decay" min="0.930" max="0.990" step="0.001" oninput="BG.decay=+this.value;sv(this);workerUpdateSim('BG','decay',+this.value)"><span class="vd" id="s-bg-decay-v"></span></div></div>
+                <div class="sg"><label>Diffusion</label><div class="sl"><input type="range" id="s-bg-diffusion" min="0.05" max="0.55" step="0.01" oninput="BG.diffusion=+this.value;sv(this);workerUpdateSim('BG','diffusion',+this.value)"><span class="vd" id="s-bg-diffusion-v"></span></div></div>
                 <h4>Appearance</h4>
-                <div class="sg"><label>Trail Brightness</label><div class="sl"><input type="range" id="s-bg-trailBright" min="0.5" max="3.0" step="0.1" oninput="BG.trailBright=+this.value;sv(this)"><span class="vd" id="s-bg-trailBright-v"></span></div></div>
-                <div class="sg"><label>Agent Glow</label><div class="sl"><input type="range" id="s-bg-agentGlow" min="0" max="1.0" step="0.02" oninput="BG.agentGlow=+this.value;sv(this)"><span class="vd" id="s-bg-agentGlow-v"></span></div></div>
-                <div class="sg"><label>Food Count</label><div class="sl"><input type="range" id="s-bg-foodCount" min="0" max="25" step="1" oninput="BG.foodCount=+this.value;sv(this)"><span class="vd" id="s-bg-foodCount-v"></span></div></div>
-                <div class="sg"><label>Food Strength</label><div class="sl"><input type="range" id="s-bg-foodStr" min="0" max="35" step="1" oninput="BG.foodStr=+this.value;sv(this)"><span class="vd" id="s-bg-foodStr-v"></span></div></div>
-                <div class="sg"><label>Spawn Radius</label><div class="sl"><input type="range" id="s-bg-spawnR" min="5" max="40" step="1" oninput="BG.spawnR=+this.value;sv(this)"><span class="vd" id="s-bg-spawnR-v"></span></div></div>
+                <div class="sg"><label>Trail Brightness</label><div class="sl"><input type="range" id="s-bg-trailBright" min="0.5" max="3.0" step="0.1" oninput="BG.trailBright=+this.value;sv(this);workerUpdateSim('BG','trailBright',+this.value)"><span class="vd" id="s-bg-trailBright-v"></span></div></div>
+                <div class="sg"><label>Agent Glow</label><div class="sl"><input type="range" id="s-bg-agentGlow" min="0" max="1.0" step="0.02" oninput="BG.agentGlow=+this.value;sv(this);workerUpdateSim('BG','agentGlow',+this.value)"><span class="vd" id="s-bg-agentGlow-v"></span></div></div>
+                <div class="sg"><label>Food Count</label><div class="sl"><input type="range" id="s-bg-foodCount" min="0" max="25" step="1" oninput="BG.foodCount=+this.value;sv(this);workerUpdateSim('BG','foodCount',+this.value)"><span class="vd" id="s-bg-foodCount-v"></span></div></div>
+                <div class="sg"><label>Food Strength</label><div class="sl"><input type="range" id="s-bg-foodStr" min="0" max="35" step="1" oninput="BG.foodStr=+this.value;sv(this);workerUpdateSim('BG','foodStr',+this.value)"><span class="vd" id="s-bg-foodStr-v"></span></div></div>
+                <div class="sg"><label>Spawn Radius</label><div class="sl"><input type="range" id="s-bg-spawnR" min="5" max="40" step="1" oninput="BG.spawnR=+this.value;sv(this);workerUpdateSim('BG','spawnR',+this.value)"><span class="vd" id="s-bg-spawnR-v"></span></div></div>
             </div>
 
             <div class="panel-section">
                 <h3>Mascot Physarum</h3>
                 <h4>Colony</h4>
-                <div class="sg"><label>Agent Count</label><div class="sl"><input type="range" id="s-ms-agentCount" min="1000" max="10000" step="500" oninput="MS.agentCount=+this.value;sv(this)"><span class="vd" id="s-ms-agentCount-v"></span></div></div>
-                <div class="sg"><label>Speed</label><div class="sl"><input type="range" id="s-ms-speed" min="1" max="10" step="0.2" oninput="MS.speed=+this.value;sv(this)"><span class="vd" id="s-ms-speed-v"></span></div></div>
-                <div class="sg"><label>Sensor Distance</label><div class="sl"><input type="range" id="s-ms-sensorDist" min="5" max="35" step="1" oninput="MS.sensorDist=+this.value;sv(this)"><span class="vd" id="s-ms-sensorDist-v"></span></div></div>
-                <div class="sg"><label>Sensor Angle</label><div class="sl"><input type="range" id="s-ms-sensorAngle" min="15" max="65" step="1" oninput="MS.sensorAngle=+this.value*Math.PI/180;sv(this)"><span class="vd" id="s-ms-sensorAngle-v"></span></div></div>
-                <div class="sg"><label>Turn Speed</label><div class="sl"><input type="range" id="s-ms-turnSpeed" min="8" max="42" step="1" oninput="MS.turnSpeed=+this.value*Math.PI/180;sv(this)"><span class="vd" id="s-ms-turnSpeed-v"></span></div></div>
-                <div class="sg"><label>Steps/Frame</label><div class="sl"><input type="range" id="s-ms-stepsPerFrame" min="1" max="10" step="1" oninput="MS.stepsPerFrame=+this.value;sv(this)"><span class="vd" id="s-ms-stepsPerFrame-v"></span></div></div>
-                <div class="sg"><label>Spawn Rate</label><div class="sl"><input type="range" id="s-ms-spawnRate" min="10" max="200" step="5" oninput="MS.spawnRate=+this.value;sv(this)"><span class="vd" id="s-ms-spawnRate-v"></span></div></div>
+                <div class="sg"><label>Agent Count</label><div class="sl"><input type="range" id="s-ms-agentCount" min="1000" max="10000" step="500" oninput="MS.agentCount=+this.value;sv(this);workerUpdateSim('MS','agentCount',+this.value)"><span class="vd" id="s-ms-agentCount-v"></span></div></div>
+                <div class="sg"><label>Speed</label><div class="sl"><input type="range" id="s-ms-speed" min="1" max="10" step="0.2" oninput="MS.speed=+this.value;sv(this);workerUpdateSim('MS','speed',+this.value)"><span class="vd" id="s-ms-speed-v"></span></div></div>
+                <div class="sg"><label>Sensor Distance</label><div class="sl"><input type="range" id="s-ms-sensorDist" min="5" max="35" step="1" oninput="MS.sensorDist=+this.value;sv(this);workerUpdateSim('MS','sensorDist',+this.value)"><span class="vd" id="s-ms-sensorDist-v"></span></div></div>
+                <div class="sg"><label>Sensor Angle</label><div class="sl"><input type="range" id="s-ms-sensorAngle" min="15" max="65" step="1" oninput="MS.sensorAngle=+this.value*Math.PI/180;sv(this);workerUpdateSim('MS','sensorAngle',+this.value*Math.PI/180)"><span class="vd" id="s-ms-sensorAngle-v"></span></div></div>
+                <div class="sg"><label>Turn Speed</label><div class="sl"><input type="range" id="s-ms-turnSpeed" min="8" max="42" step="1" oninput="MS.turnSpeed=+this.value*Math.PI/180;sv(this);workerUpdateSim('MS','turnSpeed',+this.value*Math.PI/180)"><span class="vd" id="s-ms-turnSpeed-v"></span></div></div>
+                <div class="sg"><label>Steps/Frame</label><div class="sl"><input type="range" id="s-ms-stepsPerFrame" min="1" max="10" step="1" oninput="MS.stepsPerFrame=+this.value;sv(this);workerUpdateSim('MS','stepsPerFrame',+this.value)"><span class="vd" id="s-ms-stepsPerFrame-v"></span></div></div>
+                <div class="sg"><label>Spawn Rate</label><div class="sl"><input type="range" id="s-ms-spawnRate" min="10" max="200" step="5" oninput="MS.spawnRate=+this.value;sv(this);workerUpdateSim('MS','spawnRate',+this.value)"><span class="vd" id="s-ms-spawnRate-v"></span></div></div>
                 <h4>Chemistry</h4>
-                <div class="sg"><label>Deposit</label><div class="sl"><input type="range" id="s-ms-deposit" min="3" max="30" step="1" oninput="MS.deposit=+this.value;sv(this)"><span class="vd" id="s-ms-deposit-v"></span></div></div>
-                <div class="sg"><label>Decay</label><div class="sl"><input type="range" id="s-ms-decay" min="0.935" max="0.990" step="0.001" oninput="MS.decay=+this.value;sv(this)"><span class="vd" id="s-ms-decay-v"></span></div></div>
-                <div class="sg"><label>Diffusion</label><div class="sl"><input type="range" id="s-ms-diffusion" min="0.05" max="0.50" step="0.01" oninput="MS.diffusion=+this.value;sv(this)"><span class="vd" id="s-ms-diffusion-v"></span></div></div>
+                <div class="sg"><label>Deposit</label><div class="sl"><input type="range" id="s-ms-deposit" min="3" max="30" step="1" oninput="MS.deposit=+this.value;sv(this);workerUpdateSim('MS','deposit',+this.value)"><span class="vd" id="s-ms-deposit-v"></span></div></div>
+                <div class="sg"><label>Decay</label><div class="sl"><input type="range" id="s-ms-decay" min="0.935" max="0.990" step="0.001" oninput="MS.decay=+this.value;sv(this);workerUpdateSim('MS','decay',+this.value)"><span class="vd" id="s-ms-decay-v"></span></div></div>
+                <div class="sg"><label>Diffusion</label><div class="sl"><input type="range" id="s-ms-diffusion" min="0.05" max="0.50" step="0.01" oninput="MS.diffusion=+this.value;sv(this);workerUpdateSim('MS','diffusion',+this.value)"><span class="vd" id="s-ms-diffusion-v"></span></div></div>
                 <h4>Appearance</h4>
-                <div class="sg"><label>Trail Brightness</label><div class="sl"><input type="range" id="s-ms-trailBright" min="0.8" max="4.5" step="0.1" oninput="MS.trailBright=+this.value;sv(this)"><span class="vd" id="s-ms-trailBright-v"></span></div></div>
-                <div class="sg"><label>Agent Glow</label><div class="sl"><input type="range" id="s-ms-agentGlow" min="0" max="1.5" step="0.02" oninput="MS.agentGlow=+this.value;sv(this)"><span class="vd" id="s-ms-agentGlow-v"></span></div></div>
-                <div class="sg"><label>Spawn Radius</label><div class="sl"><input type="range" id="s-ms-spawnR" min="3" max="30" step="1" oninput="MS.spawnR=+this.value;sv(this)"><span class="vd" id="s-ms-spawnR-v"></span></div></div>
+                <div class="sg"><label>Trail Brightness</label><div class="sl"><input type="range" id="s-ms-trailBright" min="0.8" max="4.5" step="0.1" oninput="MS.trailBright=+this.value;sv(this);workerUpdateSim('MS','trailBright',+this.value)"><span class="vd" id="s-ms-trailBright-v"></span></div></div>
+                <div class="sg"><label>Agent Glow</label><div class="sl"><input type="range" id="s-ms-agentGlow" min="0" max="1.5" step="0.02" oninput="MS.agentGlow=+this.value;sv(this);workerUpdateSim('MS','agentGlow',+this.value)"><span class="vd" id="s-ms-agentGlow-v"></span></div></div>
+                <div class="sg"><label>Spawn Radius</label><div class="sl"><input type="range" id="s-ms-spawnR" min="3" max="30" step="1" oninput="MS.spawnR=+this.value;sv(this);workerUpdateSim('MS','spawnR',+this.value)"><span class="vd" id="s-ms-spawnR-v"></span></div></div>
             </div>
 
             <div class="panel-section">
                 <h3>Stencil</h3>
                 <h4>Visibility</h4>
-                <div class="sg"><label>Master Opacity</label><div class="sl"><input type="range" id="s-stencilMaster" min="0" max="1.5" step="0.01" oninput="window._stencilMaster=+this.value;sv(this);updateShareURL()"><span class="vd" id="s-stencilMaster-v"></span></div></div>
-                <div class="sg"><label>Pulse Speed</label><div class="sl"><input type="range" id="s-pulseSpeed" min="0.01" max="0.12" step="0.002" oninput="window._pulseSpeed=+this.value;sv(this)"><span class="vd" id="s-pulseSpeed-v"></span></div></div>
-                <div class="sg"><label>Formation Speed</label><div class="sl"><input type="range" id="s-formSpeed" min="20" max="200" step="5" oninput="window._stencilEnd=+this.value;sv(this)"><span class="vd" id="s-formSpeed-v"></span></div></div>
+                <div class="sg"><label>Master Opacity</label><div class="sl"><input type="range" id="s-stencilMaster" min="0" max="1.5" step="0.01" oninput="window._stencilMaster=+this.value;sv(this);updateShareURL();workerUpdateParam('stencilMaster',+this.value)"><span class="vd" id="s-stencilMaster-v"></span></div></div>
+                <div class="sg"><label>Pulse Speed</label><div class="sl"><input type="range" id="s-pulseSpeed" min="0.01" max="0.12" step="0.002" oninput="window._pulseSpeed=+this.value;sv(this);workerUpdateParam('pulseSpeed',+this.value)"><span class="vd" id="s-pulseSpeed-v"></span></div></div>
+                <div class="sg"><label>Formation Speed</label><div class="sl"><input type="range" id="s-formSpeed" min="20" max="200" step="5" oninput="window._stencilEnd=+this.value;sv(this);workerUpdateParam('stencilEnd',+this.value)"><span class="vd" id="s-formSpeed-v"></span></div></div>
                 <h4>Edge Detection</h4>
-                <div class="sg"><label>Edge Strong</label><div class="sl"><input type="range" id="s-edgeStrong" min="0.1" max="0.6" step="0.01" oninput="window._edgeStrong=+this.value;sv(this);updateShareURL()"><span class="vd" id="s-edgeStrong-v"></span></div></div>
-                <div class="sg"><label>Edge Weak</label><div class="sl"><input type="range" id="s-edgeWeak" min="0.04" max="0.3" step="0.01" oninput="window._edgeWeak=+this.value;sv(this);updateShareURL()"><span class="vd" id="s-edgeWeak-v"></span></div></div>
-                <div class="sg"><label>Edge Fade Depth</label><div class="sl"><input type="range" id="s-edgeFade" min="10" max="60" step="2" oninput="window._edgeFadeDepth=+this.value;sv(this)"><span class="vd" id="s-edgeFade-v"></span></div></div>
+                <div class="sg"><label>Edge Strong</label><div class="sl"><input type="range" id="s-edgeStrong" min="0.1" max="0.6" step="0.01" oninput="window._edgeStrong=+this.value;sv(this);updateShareURL();workerUpdateParam('edgeStrong',+this.value)"><span class="vd" id="s-edgeStrong-v"></span></div></div>
+                <div class="sg"><label>Edge Weak</label><div class="sl"><input type="range" id="s-edgeWeak" min="0.04" max="0.3" step="0.01" oninput="window._edgeWeak=+this.value;sv(this);updateShareURL();workerUpdateParam('edgeWeak',+this.value)"><span class="vd" id="s-edgeWeak-v"></span></div></div>
+                <div class="sg"><label>Edge Fade Depth</label><div class="sl"><input type="range" id="s-edgeFade" min="10" max="60" step="2" oninput="window._edgeFadeDepth=+this.value;sv(this);workerUpdateParam('edgeFadeDepth',+this.value)"><span class="vd" id="s-edgeFade-v"></span></div></div>
                 <h4>Face Detail</h4>
-                <div class="sg"><label>Dark Threshold</label><div class="sl"><input type="range" id="s-darkThresh" min="0.04" max="0.30" step="0.01" oninput="window._darkThresh=+this.value;sv(this)"><span class="vd" id="s-darkThresh-v"></span></div></div>
-                <div class="sg"><label>Dark Edge Boost</label><div class="sl"><input type="range" id="s-nearDarkBoost" min="1.0" max="5.0" step="0.1" oninput="window._nearDarkBoost=+this.value;sv(this)"><span class="vd" id="s-nearDarkBoost-v"></span></div></div>
-                <div class="sg"><label>Fill Density</label><div class="sl"><input type="range" id="s-fillDensity" min="1" max="5" step="1" oninput="window._fillDensity=+this.value;sv(this)"><span class="vd" id="s-fillDensity-v"></span></div></div>
+                <div class="sg"><label>Dark Threshold</label><div class="sl"><input type="range" id="s-darkThresh" min="0.04" max="0.30" step="0.01" oninput="window._darkThresh=+this.value;sv(this);workerUpdateParam('darkThresh',+this.value)"><span class="vd" id="s-darkThresh-v"></span></div></div>
+                <div class="sg"><label>Dark Edge Boost</label><div class="sl"><input type="range" id="s-nearDarkBoost" min="1.0" max="5.0" step="0.1" oninput="window._nearDarkBoost=+this.value;sv(this);workerUpdateParam('nearDarkBoost',+this.value)"><span class="vd" id="s-nearDarkBoost-v"></span></div></div>
+                <div class="sg"><label>Fill Density</label><div class="sl"><input type="range" id="s-fillDensity" min="1" max="5" step="1" oninput="window._fillDensity=+this.value;sv(this);workerUpdateParam('fillDensity',+this.value)"><span class="vd" id="s-fillDensity-v"></span></div></div>
             </div>
         </div>
     </div>
@@ -285,7 +285,7 @@
     </div>
     <div id="mobile-stencil-slider">
         <label>Stencil</label>
-        <input type="range" min="0" max="1.5" step="0.01" value="0.7" oninput="window._stencilMaster=+this.value;document.getElementById('s-stencilMaster').value=this.value;sv(document.getElementById('s-stencilMaster'));document.getElementById('mobile-stencil-v').textContent=parseFloat(this.value).toFixed(2);updateShareURL()">
+        <input type="range" min="0" max="1.5" step="0.01" value="0.7" oninput="window._stencilMaster=+this.value;document.getElementById('s-stencilMaster').value=this.value;sv(document.getElementById('s-stencilMaster'));document.getElementById('mobile-stencil-v').textContent=parseFloat(this.value).toFixed(2);updateShareURL();workerUpdateParam('stencilMaster',+this.value)">
         <span class="vd" id="mobile-stencil-v">0.70</span>
     </div>
     <div id="controls">
@@ -299,13 +299,23 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════
-//  CONFIG
+//  WORKER FEATURE DETECTION
+// ═══════════════════════════════════════════════════════════════
+const USE_WORKER = typeof OffscreenCanvas !== 'undefined';
+
+// Forward parameter changes to worker (no-op in legacy mode)
+function workerUpdateParam(key, value) {
+    if (USE_WORKER && typeof worker !== 'undefined' && worker) worker.postMessage({ type: 'updateParams', key, value });
+}
+function workerUpdateSim(target, key, value) {
+    if (USE_WORKER && typeof worker !== 'undefined' && worker) worker.postMessage({ type: 'updateSimParam', target, key, value });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG (shared between legacy & worker paths)
 // ═══════════════════════════════════════════════════════════════
 
 // ── Palette families ──
-// Each: { name, mascot: [dark, mid, hot], bg: [dark, mid, hot], chromatic: [warm, cool] }
-// Texture profiles: define how trails behave per palette
-// bg/ms overrides are applied on top of base BG/MS params
 const TEXTURES = {
     // Warm, steady glow. Medium everything, the baseline.
     standard:    { bg: { speed: 7.0, sensorDist: 22, diffusion: 0.25, deposit: 12, decay: 0.960, turnSpeed: 26, trailBright: 1.3, foodCount: 12 },
@@ -1217,7 +1227,7 @@ function resize() {
         ghostCanvas.style.height = displayMsize + 'px';
     }
 
-    if (maskImg) buildMask();
+    if (maskImg && !USE_WORKER) buildMask();
 }
 
 function generateBgFoods() {
@@ -1241,6 +1251,7 @@ function setMode(m) {
     document.querySelectorAll('.mode-btn').forEach(b => {
         b.classList.toggle('active', parseInt(b.dataset.mode) === m);
     });
+    if (USE_WORKER && worker) worker.postMessage({ type: 'setMode', mode: m });
     if (typeof updateShareURL === 'function') updateShareURL();
 }
 
@@ -1731,14 +1742,23 @@ function restart() {
     } else {
         seed = Math.floor(Math.random() * 999999) + 1;
     }
-    initAll();
-    syncSliders();
-    updateShareURL();
-    // Re-trigger entrance animation on new seed
-    mascotCanvas.classList.remove('entered');
-    void mascotCanvas.offsetHeight; // force reflow
-    mascotCanvas.classList.add('entered');
-    if (!running) { running = true; requestAnimationFrame(frame); }
+    if (USE_WORKER && worker) {
+        workerReady = false;
+        workerBusy = false;
+        let mid = buildMaskImageData();
+        buildFeatheredMask();
+        worker.postMessage({ type: 'restart', seed: seed, maskImageData: mid });
+        syncSliders();
+        updateShareURL();
+    } else {
+        initAll();
+        syncSliders();
+        updateShareURL();
+        mascotCanvas.classList.remove('entered');
+        void mascotCanvas.offsetHeight;
+        mascotCanvas.classList.add('entered');
+        if (!running) { running = true; requestAnimationFrame(frame); }
+    }
 }
 
 function copyLink() {
@@ -1791,7 +1811,15 @@ function savePNG() {
 
 window.addEventListener('resize', () => {
     resize();
-    initAll();
+    if (USE_WORKER && worker) {
+        workerReady = false;
+        workerBusy = false;
+        let mid = buildMaskImageData();
+        buildFeatheredMask();
+        worker.postMessage({ type: 'resize', VW: VW, VH: VH, MSIZE: MSIZE, maskImageData: mid });
+    } else {
+        initAll();
+    }
 });
 
 // Hold Space to flash — boosts stencil (ASCII modes) + trail brightness (pixel modes)
@@ -1804,6 +1832,7 @@ window.addEventListener('keydown', (e) => {
             _savedMaster = window._stencilMaster ?? 0.28;
             window._stencilMaster = 3.0;
             _trailBoost = 4.0;
+            if (USE_WORKER && worker) worker.postMessage({ type: 'blast', active: true });
             let sl = document.getElementById('stencilMaster');
             if (sl) sl.value = 3.0;
         }
@@ -1813,6 +1842,7 @@ window.addEventListener('keyup', (e) => {
     if (e.code === 'Space' && _savedMaster !== null) {
         window._stencilMaster = _savedMaster;
         _trailBoost = 1.0;
+        if (USE_WORKER && worker) worker.postMessage({ type: 'blast', active: false, savedMaster: _savedMaster });
         let sl = document.getElementById('stencilMaster');
         if (sl) sl.value = _savedMaster;
         _savedMaster = null;
@@ -1834,12 +1864,14 @@ function _blastStart() {
         _savedMaster = window._stencilMaster ?? 0.7;
         window._stencilMaster = 3.0;
         _trailBoost = 4.0;
+        if (USE_WORKER && worker) worker.postMessage({ type: 'blast', active: true });
     }
 }
 function _blastEnd() {
     if (_savedMaster !== null) {
         window._stencilMaster = _savedMaster;
         _trailBoost = 1.0;
+        if (USE_WORKER && worker) worker.postMessage({ type: 'blast', active: false, savedMaster: _savedMaster });
         _savedMaster = null;
     }
 }
@@ -1877,6 +1909,225 @@ if (window.innerWidth <= 768) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  WORKER MODE
+// ═══════════════════════════════════════════════════════════════
+
+let worker = null;
+let workerReady = false;
+let workerBusy = false; // lockstep: true while waiting for frame response
+
+function buildMaskImageData() {
+    // Draw mascot onto mask canvas and extract ImageData for the worker
+    maskCanvasEl.width = MSIZE;
+    maskCanvasEl.height = MSIZE;
+    maskCtx.clearRect(0, 0, MSIZE, MSIZE);
+    let s = MSIZE * 0.7;
+    let mx = (MSIZE - s) / 2;
+    let my = (MSIZE - s) / 2;
+    maskCtx.drawImage(maskImg, mx, my, s, s);
+    return maskCtx.getImageData(0, 0, MSIZE, MSIZE);
+}
+
+function buildFeatheredMask() {
+    // Build feathered mask on main thread (filter: 'blur()' works here)
+    featheredMask = document.createElement('canvas');
+    featheredMask.width = MSIZE;
+    featheredMask.height = MSIZE;
+    let fCtx = featheredMask.getContext('2d');
+    fCtx.filter = 'blur(14px)';
+    fCtx.drawImage(maskCanvasEl, 0, 0);
+    fCtx.filter = 'none';
+}
+
+function startWorkerMode() {
+    worker = new Worker('stencil-worker.js');
+
+    // Build mask data on main thread
+    let mid = buildMaskImageData();
+    buildFeatheredMask();
+
+    // Ghost layer — show immediately while worker initializes
+    ghostCanvas.width = MSIZE; ghostCanvas.height = MSIZE;
+    ghostCanvas.style.width = MSIZE + 'px';
+    ghostCanvas.style.height = MSIZE + 'px';
+    if (IS_MOBILE) {
+        let screenW = window.innerWidth, screenH = window.innerHeight;
+        let displayMsize = Math.floor(Math.min(screenW, screenH) * 0.5);
+        ghostCanvas.style.width = displayMsize + 'px';
+        ghostCanvas.style.height = displayMsize + 'px';
+    }
+
+    worker.onmessage = function(e) {
+        let msg = e.data;
+        if (msg.type === 'ready') {
+            onWorkerReady(msg);
+        } else if (msg.type === 'frame') {
+            onWorkerFrame(msg);
+        }
+    };
+
+    // Send init
+    worker.postMessage({
+        type: 'init',
+        seed: seed,
+        IS_MOBILE: IS_MOBILE,
+        VW: VW,
+        VH: VH,
+        MSIZE: MSIZE,
+        formationMode: formationMode,
+        maskImageData: mid,
+        params: {
+            stencilMaster: window._stencilMaster ?? 0.28,
+            pulseSpeed: window._pulseSpeed ?? PULSE_SPEED,
+            stencilEnd: window._stencilEnd ?? STENCIL_END,
+            edgeStrong: window._edgeStrong ?? 0.3,
+            edgeWeak: window._edgeWeak ?? 0.12,
+            edgeFadeDepth: window._edgeFadeDepth ?? 30,
+            darkThresh: window._darkThresh ?? 0.12,
+            nearDarkBoost: window._nearDarkBoost ?? 2.5,
+            fillDensity: window._fillDensity ?? 3,
+        },
+    });
+}
+
+function onWorkerReady(msg) {
+    // Draw ghost bitmap
+    let gCtx = ghostCanvas.getContext('2d');
+    gCtx.clearRect(0, 0, MSIZE, MSIZE);
+    gCtx.drawImage(msg.ghostBitmap, 0, 0);
+    msg.ghostBitmap.close();
+    ghostCanvas.classList.add('visible');
+    ghostCanvas.style.opacity = '1';
+
+    // Inject dynamic chromatic CSS from palette info
+    let warm = msg.chromaticWarm;
+    let cool = msg.chromaticCool;
+    let mascotAnim;
+    if (IS_MOBILE) {
+        mascotAnim = `
+        @keyframes chromatic-orbit-mobile {
+            0%   { filter: drop-shadow(3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(-3px 0 2px ${cool.replace('A','0.20')}); }
+            25%  { filter: drop-shadow(0 3px 2px ${warm.replace('A','0.20')}) drop-shadow(0 -3px 2px ${cool.replace('A','0.20')}); }
+            50%  { filter: drop-shadow(-3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(3px 0 2px ${cool.replace('A','0.20')}); }
+            75%  { filter: drop-shadow(0 -3px 2px ${warm.replace('A','0.20')}) drop-shadow(0 3px 2px ${cool.replace('A','0.20')}); }
+            100% { filter: drop-shadow(3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(-3px 0 2px ${cool.replace('A','0.20')}); }
+        }`;
+    } else {
+        mascotAnim = `
+        @keyframes chromatic-orbit {
+            0%   { filter: drop-shadow(5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(-5px 0 3px ${cool.replace('A','0.30')}); }
+            25%  { filter: drop-shadow(0 5px 3px ${warm.replace('A','0.30')}) drop-shadow(0 -5px 3px ${cool.replace('A','0.30')}); }
+            50%  { filter: drop-shadow(-5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(5px 0 3px ${cool.replace('A','0.30')}); }
+            75%  { filter: drop-shadow(0 -5px 3px ${warm.replace('A','0.30')}) drop-shadow(0 5px 3px ${cool.replace('A','0.30')}); }
+            100% { filter: drop-shadow(5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(-5px 0 3px ${cool.replace('A','0.30')}); }
+        }
+        @keyframes bg-chromatic {
+            0%   { filter: drop-shadow(3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(-3px 0 1px ${cool.replace('A','0.08')}); }
+            50%  { filter: drop-shadow(-3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(3px 0 1px ${cool.replace('A','0.08')}); }
+            100% { filter: drop-shadow(3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(-3px 0 1px ${cool.replace('A','0.08')}); }
+        }`;
+    }
+    let styleId = 'dynamic-chromatic';
+    let existing = document.getElementById(styleId);
+    if (existing) existing.remove();
+    let style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = mascotAnim;
+    document.head.appendChild(style);
+
+    // Re-trigger bg chromatic
+    let bgEl = document.getElementById('bg');
+    bgEl.style.animation = 'none';
+    void bgEl.offsetHeight;
+    if (!IS_MOBILE) bgEl.style.animation = 'bg-chromatic 14s linear infinite';
+
+    // Sync BG/MS params from worker for slider display
+    if (msg.bgParams) Object.assign(BG, msg.bgParams);
+    if (msg.msParams) Object.assign(MS, msg.msParams);
+    syncSliders();
+
+    // Trigger entrance
+    mascotCanvas.classList.remove('entered');
+    void mascotCanvas.offsetHeight;
+    mascotCanvas.classList.add('entered');
+
+    workerReady = true;
+    workerBusy = false;
+
+    // Start the compositing frame loop
+    requestAnimationFrame(workerFrameLoop);
+}
+
+function onWorkerFrame(msg) {
+    // ── Composite BG ──
+    bgCtx.drawImage(msg.bgBitmap, 0, 0);
+    msg.bgBitmap.close();
+
+    // Atmospheric vignette
+    let vigR = Math.max(VW, VH) * 0.50;
+    let grad = bgCtx.createRadialGradient(VW/2, VH/2, MSIZE * 0.18, VW/2, VH/2, vigR);
+    let vigFade = Math.min(1, msg.frameNum * 0.008);
+    grad.addColorStop(0, `rgba(13,13,13,${0.22 * vigFade})`);
+    grad.addColorStop(0.35, `rgba(13,13,13,${0.12 * vigFade})`);
+    grad.addColorStop(0.7, `rgba(13,13,13,${0.04 * vigFade})`);
+    grad.addColorStop(1, 'rgba(13,13,13,0)');
+    bgCtx.fillStyle = grad;
+    bgCtx.fillRect(0, 0, VW, VH);
+
+    // ── Composite mascot with feathered mask ──
+    mascotCtx.clearRect(0, 0, MSIZE, MSIZE);
+    mascotCtx.drawImage(msg.mascotBitmap, 0, 0);
+    msg.mascotBitmap.close();
+
+    mascotCtx.globalCompositeOperation = 'destination-in';
+    mascotCtx.drawImage(featheredMask, 0, 0);
+    mascotCtx.globalCompositeOperation = 'source-over';
+
+    // ── Ghost opacity ──
+    ghostCanvas.style.opacity = msg.ghostOpacity.toFixed(3);
+    if (!msg.ghostVisible) ghostCanvas.classList.remove('visible');
+
+    // ── Status info ──
+    if (msg.statusText) {
+        statusEl.textContent = msg.statusText;
+        statusEl.classList.add('show');
+        clearTimeout(statusEl._fadeTimer);
+        statusEl._fadeTimer = setTimeout(() => statusEl.classList.remove('show'), 3000);
+        document.getElementById('watermark').textContent = seed;
+        let hintEl = document.getElementById('hint');
+        hintEl.textContent = IS_MOBILE ? 'tap & hold' : 'hold ␣';
+        hintEl.style.animation = 'none';
+        hintEl.offsetHeight;
+        hintEl.style.animation = 'hintFade 6s ease-out forwards';
+    }
+
+    // ── Recording composite ──
+    if (isRecording) {
+        compCtx.drawImage(bgCanvas, 0, 0);
+        let mx = (VW - MSIZE) / 2;
+        let my = (VH - MSIZE) / 2;
+        if (ghostCanvas.classList.contains('visible')) {
+            compCtx.globalAlpha = parseFloat(ghostCanvas.style.opacity) || 1;
+            compCtx.drawImage(ghostCanvas, mx, my, MSIZE, MSIZE);
+            compCtx.globalAlpha = 1;
+        }
+        compCtx.drawImage(mascotCanvas, mx, my);
+        drawSeedWatermark(compCtx, VW, VH);
+    }
+
+    workerBusy = false;
+}
+
+function workerFrameLoop() {
+    if (!workerReady) return;
+    if (!workerBusy) {
+        workerBusy = true;
+        worker.postMessage({ type: 'tick' });
+    }
+    requestAnimationFrame(workerFrameLoop);
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  BOOT
 // ═══════════════════════════════════════════════════════════════
 
@@ -1889,15 +2140,23 @@ async function boot() {
 
     await loadMascot();
     resize();
-    initAll();
-    syncSliders();
-    updateShareURL();
-    running = true;
-    // Trigger entrance animation after first frame renders
-    requestAnimationFrame(() => {
-        mascotCanvas.classList.add('entered');
-        frame();
-    });
+
+    if (USE_WORKER) {
+        // Worker mode — simulation runs off main thread
+        syncSliders();
+        updateShareURL();
+        startWorkerMode();
+    } else {
+        // Legacy mode — everything on main thread (Safari <16.4, older browsers)
+        initAll();
+        syncSliders();
+        updateShareURL();
+        running = true;
+        requestAnimationFrame(() => {
+            mascotCanvas.classList.add('entered');
+            frame();
+        });
+    }
 }
 
 function updateShareURL() {
