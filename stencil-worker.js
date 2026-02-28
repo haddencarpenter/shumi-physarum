@@ -287,12 +287,12 @@ function selectPalette(s) {
     MS.trailMax = msTex.trailMax || 180;
 
     if (IS_MOBILE) {
-        BG.agentCount = Math.min(BG.agentCount, 5500);
-        MS.agentCount = Math.min(MS.agentCount, 4000);
+        BG.agentCount = Math.min(BG.agentCount, 6000);
+        MS.agentCount = Math.min(MS.agentCount, 4500);
         BG.stepsPerFrame = Math.min(BG.stepsPerFrame, 4);
         MS.stepsPerFrame = Math.min(MS.stepsPerFrame, 4);
-        BG.spawnRate = Math.min(BG.spawnRate, 100);
-        MS.spawnRate = Math.min(MS.spawnRate, 50);
+        BG.spawnRate = Math.min(BG.spawnRate, 120);
+        MS.spawnRate = Math.min(MS.spawnRate, 60);
     }
 }
 
@@ -863,8 +863,8 @@ function handleTick() {
         let EDGE_STRONG = _edgeStrong;
         let EDGE_WEAK   = _edgeWeak;
 
-        let cw = IS_MOBILE ? 6 : CELL_W;
-        let ch_ = IS_MOBILE ? 10 : CELL_H;
+        let cw = IS_MOBILE ? 5 : CELL_W;
+        let ch_ = IS_MOBILE ? 8 : CELL_H;
         let sCols = Math.floor(MSIZE / cw);
         let sRows = Math.floor(MSIZE / ch_);
         let pulse = Math.sin(pulsePhase);

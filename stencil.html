@@ -727,20 +727,20 @@ if (IS_LP) {
     window._trailBoost = 4.0;
     window._lpBlastStart = true;
 } else if (IS_MOBILE) {
-    // ~60% of desktop agent populations (up from 45%)
-    BG.agentCount = Math.round(BG.agentCount * 0.60);
-    MS.agentCount = Math.round(MS.agentCount * 0.60);
+    // ~70% of desktop agent populations — full res canvas needs more agents
+    BG.agentCount = Math.round(BG.agentCount * 0.70);
+    MS.agentCount = Math.round(MS.agentCount * 0.70);
     // Fewer sim steps per frame (65% of desktop, min 3)
     BG.stepsPerFrame = Math.max(3, Math.round(BG.stepsPerFrame * 0.65));
     MS.stepsPerFrame = Math.max(3, Math.round(MS.stepsPerFrame * 0.65));
     // Slower spawn (less GC pressure)
-    BG.spawnRate = Math.round(BG.spawnRate * 0.60);
-    MS.spawnRate = Math.round(MS.spawnRate * 0.60);
-    BG.initialBatch = Math.round(BG.initialBatch * 0.60);
-    MS.initialBatch = Math.round(MS.initialBatch * 0.60);
-    // Compensate for fewer agents — less boost needed with more agents
-    BG.trailBright *= 1.4;
-    MS.trailBright *= 1.4;
+    BG.spawnRate = Math.round(BG.spawnRate * 0.70);
+    MS.spawnRate = Math.round(MS.spawnRate * 0.70);
+    BG.initialBatch = Math.round(BG.initialBatch * 0.70);
+    MS.initialBatch = Math.round(MS.initialBatch * 0.70);
+    // Compensate for fewer agents
+    BG.trailBright *= 1.3;
+    MS.trailBright *= 1.3;
     // Higher default stencil opacity — desktop's 0.28 is invisible on mobile
     window._stencilMaster = 0.7;
 }
@@ -1233,11 +1233,11 @@ function resize() {
     // HiDPI: render mascot at native resolution for sharp trails on Retina displays
     let dpr = Math.min(window.devicePixelRatio || 1, 2); // cap at 2x to avoid perf issues
 
-    // On mobile: render at half resolution, CSS-scale to fill viewport
+    // On mobile: render at full screen resolution for crisp output
     if (IS_MOBILE) {
-        VW = Math.floor(screenW * 0.85);
-        VH = Math.floor(screenH * 0.85);
-        dpr = 1; // mobile already scales down, skip HiDPI
+        VW = screenW;
+        VH = screenH;
+        dpr = Math.min(window.devicePixelRatio || 1, 1.5); // mild HiDPI on mobile
         // CSS stretches canvas to viewport
         bgCanvas.style.width = screenW + 'px';
         bgCanvas.style.height = screenH + 'px';
@@ -1249,8 +1249,8 @@ function resize() {
     }
 
     MSIZE = Math.floor(Math.min(VW, VH) * 0.5);
-    // On mobile, mascot needs to be much bigger for the stencil to read
-    if (IS_MOBILE) MSIZE = Math.max(MSIZE, Math.floor(Math.min(screenW, screenH) * 0.55));
+    // On mobile, mascot needs to be bigger for the stencil to read
+    if (IS_MOBILE) MSIZE = Math.max(MSIZE, Math.floor(Math.min(screenW, screenH) * 0.60));
 
     bgCanvas.width = VW; bgCanvas.height = VH;
     bgSimCanvas.width = VW; bgSimCanvas.height = VH;
@@ -1282,7 +1282,7 @@ function resize() {
 
     // Scale mascot canvas display to correct screen position
     if (IS_MOBILE) {
-        let displayMsize = Math.floor(Math.min(screenW, screenH) * 0.5);
+        let displayMsize = Math.floor(Math.min(screenW, screenH) * 0.55);
         mascotCanvas.style.width = displayMsize + 'px';
         mascotCanvas.style.height = displayMsize + 'px';
         // Ghost/resurface must match mascot display size so they overlap perfectly
@@ -1580,8 +1580,8 @@ function frame() {
         let EDGE_STRONG = window._edgeStrong ?? 0.3;
         let EDGE_WEAK   = window._edgeWeak ?? 0.12;
 
-        let cw = IS_MOBILE ? 6 : CELL_W;
-        let ch_ = IS_MOBILE ? 10 : CELL_H;
+        let cw = IS_MOBILE ? 5 : CELL_W;
+        let ch_ = IS_MOBILE ? 8 : CELL_H;
         let sCols = Math.floor(MSIZE / cw);
         let sRows = Math.floor(MSIZE / ch_);
         let pulse = Math.sin(pulsePhase);
