@@ -18,6 +18,13 @@
         body { background: #0D0D0D; overflow: hidden; font-family: 'Courier New', monospace; }
         /* Background physarum — fills entire viewport */
         #bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+        /* Ghost afterimage — barely perceptible original mascot, burned retina effect */
+        #ghost-layer {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;
+            opacity: 0; transition: opacity 0.6s ease-out;
+            pointer-events: none;
+        }
+        #ghost-layer.visible { opacity: 1; }
         /* Mascot layer — centered, chromatic orbit */
         #mascot-layer {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;
@@ -187,6 +194,8 @@
 <body>
     <!-- Background physarum: full viewport -->
     <canvas id="bg"></canvas>
+    <!-- Ghost afterimage: barely perceptible original mascot, fades as trails build -->
+    <canvas id="ghost-layer"></canvas>
     <!-- Mascot masked physarum: square, centered -->
     <canvas id="mascot-layer"></canvas>
     <!-- Hidden work canvases -->
@@ -626,6 +635,7 @@ let _urlEdgeW = _urlParams.get('ew');
 // Canvases
 const bgCanvas = document.getElementById('bg');
 const bgSimCanvas = document.getElementById('bg-sim');
+const ghostCanvas = document.getElementById('ghost-layer');
 const mascotCanvas = document.getElementById('mascot-layer');
 const mascotSimCanvas = document.getElementById('mascot-sim');
 const maskCanvasEl = document.getElementById('mask-canvas');
@@ -634,6 +644,7 @@ const statusEl = document.getElementById('status');
 
 const bgCtx = bgCanvas.getContext('2d');
 const bgSimCtx = bgSimCanvas.getContext('2d');
+const ghostCtx = ghostCanvas.getContext('2d');
 const mascotCtx = mascotCanvas.getContext('2d');
 const mascotSimCtx = mascotSimCanvas.getContext('2d');
 const maskCtx = maskCanvasEl.getContext('2d');
@@ -858,7 +869,46 @@ function buildMask() {
             stencilGrid[row * sCols + col] = { lum: lumVal, a: a / 255, reveal, r, g, b, edge: edgeMax };
         }
     }
+
+    // ── Build ghost afterimage — extreme shading of original mascot ──
+    // Barely perceptible color, acts as burned retina impression under trails
+    buildGhost();
 }
+
+function buildGhost() {
+    ghostCanvas.width = MSIZE; ghostCanvas.height = MSIZE;
+    let gCtx = ghostCanvas.getContext('2d');
+    gCtx.clearRect(0, 0, MSIZE, MSIZE);
+
+    // Draw original mascot art at full color
+    const s = MSIZE * 0.7;
+    const mx = (MSIZE - s) / 2;
+    const my = (MSIZE - s) / 2;
+    gCtx.drawImage(maskImg, mx, my, s, s);
+
+    // Crush color: multiply with near-black to leave only the faintest ghost
+    // Two passes — first a heavy multiply, then an opacity overlay to push it further down
+    gCtx.globalCompositeOperation = 'multiply';
+    gCtx.fillStyle = '#1a1a1a';
+    gCtx.fillRect(0, 0, MSIZE, MSIZE);
+    gCtx.globalCompositeOperation = 'multiply';
+    gCtx.fillStyle = '#2a2a2a';
+    gCtx.fillRect(0, 0, MSIZE, MSIZE);
+
+    // Feather edges with the same mask so ghost doesn't have hard silhouette
+    gCtx.globalCompositeOperation = 'destination-in';
+    gCtx.drawImage(featheredMask, 0, 0);
+    gCtx.globalCompositeOperation = 'source-over';
+
+    // Show ghost immediately, will be faded out in frame loop
+    ghostCanvas.classList.add('visible');
+    ghostFadeStart = -1; // reset fade timer
+}
+
+// Ghost fade state
+let ghostFadeStart = -1;
+const GHOST_HOLD_FRAMES = 90;       // frames to hold full ghost before fading
+const GHOST_FADE_FRAMES = 180;      // frames to fade ghost to zero
 
 function getMaskFoodPoints(count) {
     let points = [];
@@ -1138,6 +1188,11 @@ function resize() {
     bgSimCanvas.width = VW; bgSimCanvas.height = VH;
     compositeCanvas.width = VW; compositeCanvas.height = VH;
 
+    // Ghost afterimage layer — same logical size as mascot
+    ghostCanvas.width = MSIZE; ghostCanvas.height = MSIZE;
+    ghostCanvas.style.width = MSIZE + 'px';
+    ghostCanvas.style.height = MSIZE + 'px';
+
     // Mascot display canvas: HiDPI-scaled for sharp trails on Retina displays
     // Simulation stays at MSIZE; display canvas upscales for crispness
     let mRender = Math.floor(MSIZE * dpr);
@@ -1261,6 +1316,12 @@ function syncSliders() {
 function initAll() {
     selectPalette(seed);
     srng(seed);
+
+    // Reset ghost afterimage — bring it back for the new seed's entrance
+    ghostFadeStart = -1;
+    ghostCanvas.style.opacity = '1';
+    ghostCanvas.classList.add('visible');
+    if (maskImg) buildGhost();
 
     // Shuffle code buffer with seeded RNG so each seed gets unique code layout
     CODE_BUF = CODE_SRC.slice();
@@ -1561,6 +1622,17 @@ function frame() {
     mascotCtx.drawImage(featheredMask, 0, 0);
     mascotCtx.globalCompositeOperation = 'source-over';
 
+    // ── Ghost afterimage fade — burned retina effect ──
+    // Hold the ghost at full intensity while trails are sparse, then fade as they fill in
+    if (ghostFadeStart < 0 && msFc > GHOST_HOLD_FRAMES) ghostFadeStart = msFc;
+    if (ghostFadeStart > 0) {
+        let elapsed = msFc - ghostFadeStart;
+        let t = Math.min(1, elapsed / GHOST_FADE_FRAMES);
+        // Cubic ease-out for organic disappearance
+        let opacity = 1 - t * t * (3 - 2 * t);
+        ghostCanvas.style.opacity = opacity.toFixed(3);
+        if (opacity <= 0.001) ghostCanvas.classList.remove('visible');
+    }
 
     bgCtx.restore();
 
@@ -1569,6 +1641,12 @@ function frame() {
         compCtx.drawImage(bgCanvas, 0, 0);
         let mx = (VW - MSIZE) / 2;
         let my = (VH - MSIZE) / 2;
+        // Include ghost afterimage in recording if still visible
+        if (ghostCanvas.classList.contains('visible')) {
+            compCtx.globalAlpha = parseFloat(ghostCanvas.style.opacity) || 1;
+            compCtx.drawImage(ghostCanvas, mx, my, MSIZE, MSIZE);
+            compCtx.globalAlpha = 1;
+        }
         compCtx.drawImage(mascotCanvas, mx, my);
         drawSeedWatermark(compCtx, VW, VH);
     }
