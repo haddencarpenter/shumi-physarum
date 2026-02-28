@@ -180,8 +180,11 @@ const GHOST_HOLD_FRAMES = 90;
 const GHOST_FADE_FRAMES = 180;
 
 // Persistent resurface — retinal burn base layer
-const RESURFACE_FADE_IN = 120;
-const RESURFACE_OPACITY = 0.18;
+const RESURFACE_EARLY_PEAK = 0.55;
+const RESURFACE_FLOOR = 0.12;
+const RESURFACE_FADE_UP = 90;
+const RESURFACE_SETTLE_START = 360;
+const RESURFACE_SETTLE_DUR = 600;
 
 // Mask data (received from main thread)
 let maskImageData = null; // ImageData of the mascot
@@ -982,8 +985,18 @@ function handleTick() {
     // ── Resurface opacity (separate full-color layer) ──
     let resurfaceOpacity = 0;
     {
-        let t = Math.min(1, msFc / RESURFACE_FADE_IN);
-        resurfaceOpacity = RESURFACE_OPACITY * t * t * (3 - 2 * t);
+        if (msFc < RESURFACE_FADE_UP) {
+            let t = msFc / RESURFACE_FADE_UP;
+            resurfaceOpacity = RESURFACE_EARLY_PEAK * t * t * (3 - 2 * t);
+        } else if (msFc < RESURFACE_SETTLE_START) {
+            resurfaceOpacity = RESURFACE_EARLY_PEAK;
+        } else if (msFc < RESURFACE_SETTLE_START + RESURFACE_SETTLE_DUR) {
+            let t = (msFc - RESURFACE_SETTLE_START) / RESURFACE_SETTLE_DUR;
+            let ease = t * t * (3 - 2 * t);
+            resurfaceOpacity = RESURFACE_EARLY_PEAK + (RESURFACE_FLOOR - RESURFACE_EARLY_PEAK) * ease;
+        } else {
+            resurfaceOpacity = RESURFACE_FLOOR;
+        }
     }
 
     // ── Transfer bitmaps ──

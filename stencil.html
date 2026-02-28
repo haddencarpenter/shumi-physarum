@@ -941,8 +941,11 @@ const GHOST_HOLD_FRAMES = 90;       // frames to hold full ghost before fading
 const GHOST_FADE_FRAMES = 180;      // frames to fade ghost to zero
 
 // Persistent resurface — retinal burn base layer
-const RESURFACE_FADE_IN = 120;  // frames to fade in (~2s)
-const RESURFACE_OPACITY = 0.18; // persistent base opacity
+const RESURFACE_EARLY_PEAK = 0.55;  // strong presence while trails are sparse
+const RESURFACE_FLOOR = 0.12;       // persistent base after trails fill in
+const RESURFACE_FADE_UP = 90;       // frames to reach peak (~1.5s)
+const RESURFACE_SETTLE_START = 360; // frames before settling down (~6s)
+const RESURFACE_SETTLE_DUR = 600;   // frames to settle to floor (~10s)
 
 function getMaskFoodPoints(count) {
     let points = [];
@@ -1679,10 +1682,24 @@ function frame() {
         if (opacity <= 0.001) ghostCanvas.classList.remove('visible');
     }
 
-    // ── Resurface — persistent retinal burn base ──
+    // ── Resurface — retinal burn: strong early, settles to subtle base ──
     {
-        let t = Math.min(1, msFc / RESURFACE_FADE_IN);
-        let rOpacity = RESURFACE_OPACITY * t * t * (3 - 2 * t);
+        let rOpacity;
+        if (msFc < RESURFACE_FADE_UP) {
+            // Fade in quickly to peak
+            let t = msFc / RESURFACE_FADE_UP;
+            rOpacity = RESURFACE_EARLY_PEAK * t * t * (3 - 2 * t);
+        } else if (msFc < RESURFACE_SETTLE_START) {
+            // Hold at peak while trails are still sparse
+            rOpacity = RESURFACE_EARLY_PEAK;
+        } else if (msFc < RESURFACE_SETTLE_START + RESURFACE_SETTLE_DUR) {
+            // Gradually settle to floor as trails fill in
+            let t = (msFc - RESURFACE_SETTLE_START) / RESURFACE_SETTLE_DUR;
+            let ease = t * t * (3 - 2 * t);
+            rOpacity = RESURFACE_EARLY_PEAK + (RESURFACE_FLOOR - RESURFACE_EARLY_PEAK) * ease;
+        } else {
+            rOpacity = RESURFACE_FLOOR;
+        }
         resurfaceCanvas.style.opacity = rOpacity.toFixed(3);
     }
 
