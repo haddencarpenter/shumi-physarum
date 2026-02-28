@@ -198,8 +198,8 @@
         body.lp #toggle-panel, body.lp #settings-panel, body.lp #mode-controls,
         body.lp #controls, body.lp #watermark, body.lp #hint, body.lp #status,
         body.lp #mobile-stencil-slider { display: none !important; }
-        body.lp #mascot-layer, body.lp #mascot-layer.entered { animation: entrance 1.2s cubic-bezier(0.16,1,0.3,1) forwards !important; filter: none !important; }
-        body.lp #ghost-layer, body.lp #resurface-layer { filter: none !important; }
+        body.lp #mascot-layer, body.lp #mascot-layer.entered { animation: entrance 1.2s cubic-bezier(0.16,1,0.3,1) forwards !important; filter: none !important; top: 35%; }
+        body.lp #ghost-layer, body.lp #resurface-layer { filter: none !important; top: 35%; }
         body.lp #bg { animation: none !important; filter: none !important; }
     </style>
 </head>
@@ -710,19 +710,18 @@ const IS_LP = _urlParams.has('lp');  // Landing page lightweight mode
 const PERF_SCALE = IS_MOBILE ? 0.5 : 1.0;  // halve everything on mobile
 
 if (IS_LP) {
-    // ~50% of desktop agents — enough for visible mycelial network
-    BG.agentCount = Math.round(BG.agentCount * 0.50);
-    MS.agentCount = Math.round(MS.agentCount * 0.35);
-    BG.stepsPerFrame = Math.max(2, Math.round(BG.stepsPerFrame * 0.60));
+    // Full BG agents for rich mycelial network, lean mascot to save CPU
+    // BG unchanged (8000 agents, full speed)
+    MS.agentCount = Math.round(MS.agentCount * 0.40);
     MS.stepsPerFrame = Math.max(2, Math.round(MS.stepsPerFrame * 0.50));
-    BG.spawnRate = Math.round(BG.spawnRate * 0.50);
-    MS.spawnRate = Math.round(MS.spawnRate * 0.35);
-    BG.initialBatch = Math.round(BG.initialBatch * 0.50);
-    MS.initialBatch = Math.round(MS.initialBatch * 0.35);
-    // BG filaments need to pop — boost trail brightness significantly
+    MS.spawnRate = Math.round(MS.spawnRate * 0.40);
+    MS.initialBatch = Math.round(MS.initialBatch * 0.40);
+    // Big initial batch so filaments appear fast
+    BG.initialBatch = BG.agentCount;
+    BG.spawnRate = Math.round(BG.spawnRate * 1.5);
+    // BG filaments need to pop
     BG.trailBright *= 2.2;
     MS.trailBright *= 1.4;
-    // Slightly higher stencil presence
     window._stencilMaster = 0.40;
 } else if (IS_MOBILE) {
     // ~60% of desktop agent populations (up from 45%)
@@ -1409,7 +1408,7 @@ function initAll() {
 
     // ── Background sim — network radiates from mascot ring to edges ──
     bgCx = VW / 2;
-    bgCy = VH / 2;
+    bgCy = IS_LP ? VH * 0.35 : VH / 2;
     bgFc = 0;
     bgAgents = [];
     bgTrail = new Float32Array(VW * VH);

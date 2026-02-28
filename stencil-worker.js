@@ -732,7 +732,7 @@ function initAll() {
     buildGhost();
 
     // BG sim
-    bgCx = VW / 2; bgCy = VH / 2; bgFc = 0;
+    bgCx = VW / 2; bgCy = IS_LP ? VH * 0.35 : VH / 2; bgFc = 0;
     bgAgents = [];
     bgTrail = new Float32Array(VW * VH);
     bgTrailPrev = new Float32Array(VW * VH);
@@ -1057,16 +1057,15 @@ self.onmessage = function(e) {
                 _fillDensity = msg.params.fillDensity ?? 3;
             }
 
-            // Apply LP scaling — lightweight for landing pages
+            // Apply LP scaling — full BG for rich filaments, lean mascot
             if (IS_LP) {
-                BG.agentCount = Math.round(8000 * 0.50);
-                MS.agentCount = Math.round(5500 * 0.35);
-                BG.stepsPerFrame = Math.max(2, Math.round(5 * 0.60));
+                // BG unchanged (8000 agents, full speed)
+                MS.agentCount = Math.round(5500 * 0.40);
                 MS.stepsPerFrame = Math.max(2, Math.round(5 * 0.50));
-                BG.spawnRate = Math.round(140 * 0.50);
-                MS.spawnRate = Math.round(70 * 0.35);
-                BG.initialBatch = Math.round(3000 * 0.50);
-                MS.initialBatch = Math.round(1400 * 0.35);
+                MS.spawnRate = Math.round(70 * 0.40);
+                MS.initialBatch = Math.round(1400 * 0.40);
+                BG.initialBatch = 8000;
+                BG.spawnRate = Math.round(140 * 1.5);
                 BG.trailBright = 1.3 * 2.2;
                 MS.trailBright = 2.4 * 1.4;
                 if (_stencilMaster === 0.28) _stencilMaster = 0.40;
