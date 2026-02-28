@@ -25,7 +25,7 @@
             pointer-events: none;
         }
         #ghost-layer.visible { opacity: 1; }
-        /* Resurface layer — full-color mascot art, cyclic pulse */
+        /* Resurface layer — persistent full-color mascot art, retinal burn base */
         #resurface-layer {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;
             opacity: 0; pointer-events: none;
@@ -940,12 +940,9 @@ let ghostFadeStart = -1;
 const GHOST_HOLD_FRAMES = 90;       // frames to hold full ghost before fading
 const GHOST_FADE_FRAMES = 180;      // frames to fade ghost to zero
 
-// Cyclic resurface — full-color mascot pulse
-const RESURFACE_FIRST = 1500;   // frames before first resurface (~25s)
-const RESURFACE_CYCLE = 1800;   // frames per cycle (~30s)
-const RESURFACE_FADE  = 180;    // frames to fade in/out (~3s)
-const RESURFACE_HOLD  = 90;     // frames at peak (~1.5s)
-const RESURFACE_PEAK  = 0.30;   // max opacity on resurface
+// Persistent resurface — retinal burn base layer
+const RESURFACE_FADE_IN = 120;  // frames to fade in (~2s)
+const RESURFACE_OPACITY = 0.18; // persistent base opacity
 
 function getMaskFoodPoints(count) {
     let points = [];
@@ -1682,19 +1679,10 @@ function frame() {
         if (opacity <= 0.001) ghostCanvas.classList.remove('visible');
     }
 
-    // ── Resurface pulse — full-color mascot art ──
-    if (msFc >= RESURFACE_FIRST) {
-        let cycleFrame = (msFc - RESURFACE_FIRST) % RESURFACE_CYCLE;
-        let rOpacity = 0;
-        if (cycleFrame < RESURFACE_FADE) {
-            let t = cycleFrame / RESURFACE_FADE;
-            rOpacity = RESURFACE_PEAK * t * t * (3 - 2 * t);
-        } else if (cycleFrame < RESURFACE_FADE + RESURFACE_HOLD) {
-            rOpacity = RESURFACE_PEAK;
-        } else if (cycleFrame < RESURFACE_FADE * 2 + RESURFACE_HOLD) {
-            let t = (cycleFrame - RESURFACE_FADE - RESURFACE_HOLD) / RESURFACE_FADE;
-            rOpacity = RESURFACE_PEAK * (1 - t * t * (3 - 2 * t));
-        }
+    // ── Resurface — persistent retinal burn base ──
+    {
+        let t = Math.min(1, msFc / RESURFACE_FADE_IN);
+        let rOpacity = RESURFACE_OPACITY * t * t * (3 - 2 * t);
         resurfaceCanvas.style.opacity = rOpacity.toFixed(3);
     }
 

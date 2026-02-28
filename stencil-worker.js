@@ -179,12 +179,9 @@ let ghostFadeStart = -1;
 const GHOST_HOLD_FRAMES = 90;
 const GHOST_FADE_FRAMES = 180;
 
-// Cyclic resurface constants
-const RESURFACE_FIRST = 1500;
-const RESURFACE_CYCLE = 1800;
-const RESURFACE_FADE  = 180;
-const RESURFACE_HOLD  = 90;
-const RESURFACE_PEAK  = 0.30;
+// Persistent resurface — retinal burn base layer
+const RESURFACE_FADE_IN = 120;
+const RESURFACE_OPACITY = 0.18;
 
 // Mask data (received from main thread)
 let maskImageData = null; // ImageData of the mascot
@@ -356,7 +353,9 @@ function buildMask() {
             let gy = -lum[idx - MSIZE - 1] - 2*lum[idx - MSIZE] - lum[idx - MSIZE + 1]
                      +lum[idx + MSIZE - 1]  + 2*lum[idx + MSIZE] + lum[idx + MSIZE + 1];
             let edge = Math.sqrt(gx * gx + gy * gy);
-            densityMap[idx] = Math.min(1, edge * 3 + lum[idx] * 0.15);
+            let a = px[idx * 4 + 3];
+            let darkBoost = (a > 128 && lum[idx] < 0.18) ? 0.35 : 0;
+            densityMap[idx] = Math.min(1, edge * 3 + lum[idx] * 0.15 + darkBoost);
         }
     }
 
@@ -377,6 +376,27 @@ function buildMask() {
             if (Math.sqrt(dx*dx + dy*dy) < minDist) { tooClose = true; break; }
         }
         if (!tooClose) edgeFoods.push({ x: c.x, y: c.y, r: 100 });
+    }
+
+    // Dark-feature food points (eyes, dark regions)
+    let darkCandidates = [];
+    for (let y = 4; y < MSIZE - 4; y += 3) {
+        for (let x = 4; x < MSIZE - 4; x += 3) {
+            let idx = y * MSIZE + x;
+            if (px[idx * 4 + 3] > 128 && lum[idx] < 0.15) {
+                darkCandidates.push({ x, y, d: 1 - lum[idx] });
+            }
+        }
+    }
+    darkCandidates.sort((a, b) => b.d - a.d);
+    for (let c of darkCandidates) {
+        if (edgeFoods.length >= 40) break;
+        let tooClose = false;
+        for (let f of edgeFoods) {
+            let dx = f.x - c.x, dy = f.y - c.y;
+            if (Math.sqrt(dx*dx + dy*dy) < minDist * 0.7) { tooClose = true; break; }
+        }
+        if (!tooClose) edgeFoods.push({ x: c.x, y: c.y, r: 80 });
     }
 
     // ASCII stencil grid
@@ -848,7 +868,7 @@ function handleTick() {
                 let skipCell = false;
                 let alphaBoost = 1.0;
 
-                if (isDarkFeature && !isEdge) { continue; }
+                let isDarkFill = isDarkFeature && !isEdge;
                 let nearDark = false;
                 if (isEdge) {
                     for (let dy = -1; dy <= 1 && !nearDark; dy++) {
@@ -885,6 +905,14 @@ function handleTick() {
                     let codeFillD = Math.max(1, fillD - 1);
                     if (!isMidEdge && (row + col) % codeFillD !== 0) { skipCell = true; }
                     alphaBoost = isEdge ? 1.5 : (isMidEdge ? 0.8 : 0.4);
+                }
+
+                if (isDarkFill) {
+                    skipCell = false;
+                    alphaBoost = 0.5;
+                    if (formationMode === 1) {
+                        ch = CHAR_RAMP[Math.max(1, Math.min(3, Math.floor(cell.edge * 4)))];
+                    }
                 }
 
                 if (nearDark) { alphaBoost = Math.max(alphaBoost, _nearDarkBoost); }
@@ -953,17 +981,9 @@ function handleTick() {
 
     // ── Resurface opacity (separate full-color layer) ──
     let resurfaceOpacity = 0;
-    if (msFc >= RESURFACE_FIRST) {
-        let cycleFrame = (msFc - RESURFACE_FIRST) % RESURFACE_CYCLE;
-        if (cycleFrame < RESURFACE_FADE) {
-            let t = cycleFrame / RESURFACE_FADE;
-            resurfaceOpacity = RESURFACE_PEAK * t * t * (3 - 2 * t);
-        } else if (cycleFrame < RESURFACE_FADE + RESURFACE_HOLD) {
-            resurfaceOpacity = RESURFACE_PEAK;
-        } else if (cycleFrame < RESURFACE_FADE * 2 + RESURFACE_HOLD) {
-            let t = (cycleFrame - RESURFACE_FADE - RESURFACE_HOLD) / RESURFACE_FADE;
-            resurfaceOpacity = RESURFACE_PEAK * (1 - t * t * (3 - 2 * t));
-        }
+    {
+        let t = Math.min(1, msFc / RESURFACE_FADE_IN);
+        resurfaceOpacity = RESURFACE_OPACITY * t * t * (3 - 2 * t);
     }
 
     // ── Transfer bitmaps ──
