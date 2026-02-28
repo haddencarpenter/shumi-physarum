@@ -2170,6 +2170,8 @@ function updateShareURL() {
     if (es !== undefined && es !== 0.3) p.set('es', es.toFixed(2));
     let ew = window._edgeWeak;
     if (ew !== undefined && ew !== 0.12) p.set('ew', ew.toFixed(2));
+    // Preserve ?legacy flag for testing
+    if (new URLSearchParams(window.location.search).has('legacy')) p.set('legacy', '');
     history.replaceState(null, '', '?' + p.toString());
 }
 
