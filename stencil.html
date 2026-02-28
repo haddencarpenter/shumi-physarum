@@ -21,10 +21,9 @@
         /* Ghost afterimage — barely perceptible original mascot, burned retina effect */
         #ghost-layer {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;
-            opacity: 0; transition: opacity 0.6s ease-out;
-            pointer-events: none;
+            pointer-events: none; display: none;
         }
-        #ghost-layer.visible { opacity: 1; }
+        #ghost-layer.visible { display: block; }
         /* Mascot layer — centered, chromatic orbit */
         #mascot-layer {
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;
@@ -661,6 +660,11 @@ const mascotSimCtx = mascotSimCanvas.getContext('2d');
 const maskCtx = maskCanvasEl.getContext('2d');
 const compCtx = compositeCanvas.getContext('2d');
 
+// Ghost image buffers for swap between crushed (initial) and full-color (resurface)
+let ghostCrushedBuf = null;  // offscreen canvas: color-crushed ghost
+let ghostFullBuf = null;     // offscreen canvas: full-color ghost
+let ghostIsResurface = false; // tracks which version is currently on ghostCanvas
+
 // Viewport dimensions
 let VW, VH;
 // Mascot square size
@@ -911,15 +915,36 @@ function buildGhost() {
     gCtx.drawImage(featheredMask, 0, 0);
     gCtx.globalCompositeOperation = 'source-over';
 
+    // Save crushed version as buffer
+    ghostCrushedBuf = document.createElement('canvas');
+    ghostCrushedBuf.width = MSIZE; ghostCrushedBuf.height = MSIZE;
+    ghostCrushedBuf.getContext('2d').drawImage(ghostCanvas, 0, 0);
+
+    // Build full-color version for cyclic resurface (no color crush)
+    ghostFullBuf = document.createElement('canvas');
+    ghostFullBuf.width = MSIZE; ghostFullBuf.height = MSIZE;
+    let fCtx = ghostFullBuf.getContext('2d');
+    fCtx.drawImage(maskImg, mx, my, s, s);
+    if (featheredMask) {
+        fCtx.globalCompositeOperation = 'destination-in';
+        fCtx.drawImage(featheredMask, 0, 0);
+        fCtx.globalCompositeOperation = 'source-over';
+    }
+    ghostIsResurface = false;
+
     // Show ghost immediately, will be faded out in frame loop
     ghostCanvas.classList.add('visible');
-    ghostFadeStart = -1; // reset fade timer
 }
 
 // Ghost fade state
-let ghostFadeStart = -1;
 const GHOST_HOLD_FRAMES = 90;       // frames to hold full ghost before fading
 const GHOST_FADE_FRAMES = 180;      // frames to fade ghost to zero
+// Cyclic resurface constants
+const RESURFACE_FIRST = 1500;   // frames before first resurface (~25s)
+const RESURFACE_CYCLE = 1800;   // frames per cycle (~30s)
+const RESURFACE_FADE  = 180;    // frames to fade in/out (~3s)
+const RESURFACE_HOLD  = 90;     // frames at peak (~1.5s)
+const RESURFACE_PEAK  = 0.30;   // max opacity on resurface
 
 function getMaskFoodPoints(count) {
     let points = [];
@@ -1333,7 +1358,6 @@ function initAll() {
     srng(seed);
 
     // Reset ghost afterimage — bring it back for the new seed's entrance
-    ghostFadeStart = -1;
     ghostCanvas.style.opacity = '1';
     ghostCanvas.classList.add('visible');
     if (maskImg) buildGhost();
@@ -1637,16 +1661,59 @@ function frame() {
     mascotCtx.drawImage(featheredMask, 0, 0);
     mascotCtx.globalCompositeOperation = 'source-over';
 
-    // ── Ghost afterimage fade — burned retina effect ──
-    // Hold the ghost at full intensity while trails are sparse, then fade as they fill in
-    if (ghostFadeStart < 0 && msFc > GHOST_HOLD_FRAMES) ghostFadeStart = msFc;
-    if (ghostFadeStart > 0) {
-        let elapsed = msFc - ghostFadeStart;
-        let t = Math.min(1, elapsed / GHOST_FADE_FRAMES);
-        // Cubic ease-out for organic disappearance
-        let opacity = 1 - t * t * (3 - 2 * t);
-        ghostCanvas.style.opacity = opacity.toFixed(3);
-        if (opacity <= 0.001) ghostCanvas.classList.remove('visible');
+    // ── Ghost afterimage — initial hold+fade, then periodic resurface ──
+    {
+        let ghostOpacity = 0;
+        let ghostVis = false;
+
+        if (msFc <= GHOST_HOLD_FRAMES) {
+            ghostOpacity = 1;
+            ghostVis = true;
+        } else if (msFc <= GHOST_HOLD_FRAMES + GHOST_FADE_FRAMES) {
+            let t = (msFc - GHOST_HOLD_FRAMES) / GHOST_FADE_FRAMES;
+            ghostOpacity = 1 - t * t * (3 - 2 * t);
+            ghostVis = ghostOpacity > 0.001;
+        } else if (msFc >= RESURFACE_FIRST) {
+            let cycleFrame = (msFc - RESURFACE_FIRST) % RESURFACE_CYCLE;
+            if (cycleFrame < RESURFACE_FADE) {
+                let t = cycleFrame / RESURFACE_FADE;
+                ghostOpacity = RESURFACE_PEAK * t * t * (3 - 2 * t);
+                ghostVis = true;
+            } else if (cycleFrame < RESURFACE_FADE + RESURFACE_HOLD) {
+                ghostOpacity = RESURFACE_PEAK;
+                ghostVis = true;
+            } else if (cycleFrame < RESURFACE_FADE * 2 + RESURFACE_HOLD) {
+                let t = (cycleFrame - RESURFACE_FADE - RESURFACE_HOLD) / RESURFACE_FADE;
+                ghostOpacity = RESURFACE_PEAK * (1 - t * t * (3 - 2 * t));
+                ghostVis = ghostOpacity > 0.001;
+            }
+        }
+
+        let isResurface = msFc > GHOST_HOLD_FRAMES + GHOST_FADE_FRAMES && msFc >= RESURFACE_FIRST && ghostVis;
+        ghostCanvas.style.opacity = ghostOpacity.toFixed(3);
+        if (ghostVis) {
+            // Swap ghost content between crushed and full-color
+            if (isResurface && !ghostIsResurface && ghostFullBuf) {
+                let gCtx = ghostCanvas.getContext('2d');
+                gCtx.clearRect(0, 0, MSIZE, MSIZE);
+                gCtx.drawImage(ghostFullBuf, 0, 0);
+                ghostIsResurface = true;
+            } else if (!isResurface && ghostIsResurface && ghostCrushedBuf) {
+                let gCtx = ghostCanvas.getContext('2d');
+                gCtx.clearRect(0, 0, MSIZE, MSIZE);
+                gCtx.drawImage(ghostCrushedBuf, 0, 0);
+                ghostIsResurface = false;
+            }
+            if (!ghostCanvas.classList.contains('visible')) ghostCanvas.classList.add('visible');
+        } else {
+            ghostCanvas.classList.remove('visible');
+            if (ghostIsResurface && ghostCrushedBuf) {
+                let gCtx = ghostCanvas.getContext('2d');
+                gCtx.clearRect(0, 0, MSIZE, MSIZE);
+                gCtx.drawImage(ghostCrushedBuf, 0, 0);
+                ghostIsResurface = false;
+            }
+        }
     }
 
     bgCtx.restore();
@@ -1992,17 +2059,36 @@ function startWorkerMode() {
 }
 
 function onWorkerReady(msg) {
-    // Draw ghost bitmap with feathered mask (soft edges)
+    // Build crushed ghost buffer (for initial hold+fade)
+    ghostCrushedBuf = document.createElement('canvas');
+    ghostCrushedBuf.width = MSIZE; ghostCrushedBuf.height = MSIZE;
+    let cCtx = ghostCrushedBuf.getContext('2d');
+    cCtx.drawImage(msg.ghostBitmap, 0, 0);
+    msg.ghostBitmap.close();
+    if (featheredMask) {
+        cCtx.globalCompositeOperation = 'destination-in';
+        cCtx.drawImage(featheredMask, 0, 0);
+        cCtx.globalCompositeOperation = 'source-over';
+    }
+
+    // Build full-color ghost buffer (for cyclic resurface)
+    ghostFullBuf = document.createElement('canvas');
+    ghostFullBuf.width = MSIZE; ghostFullBuf.height = MSIZE;
+    let fCtx = ghostFullBuf.getContext('2d');
+    fCtx.drawImage(msg.ghostFullBitmap, 0, 0);
+    msg.ghostFullBitmap.close();
+    if (featheredMask) {
+        fCtx.globalCompositeOperation = 'destination-in';
+        fCtx.drawImage(featheredMask, 0, 0);
+        fCtx.globalCompositeOperation = 'source-over';
+    }
+
+    // Start with crushed version on ghost canvas
     let gCtx = ghostCanvas.getContext('2d');
     gCtx.clearRect(0, 0, MSIZE, MSIZE);
-    gCtx.drawImage(msg.ghostBitmap, 0, 0);
-    msg.ghostBitmap.close();
-    // Apply feathered mask so ghost has soft dissolving edges, not hard silhouette
-    if (featheredMask) {
-        gCtx.globalCompositeOperation = 'destination-in';
-        gCtx.drawImage(featheredMask, 0, 0);
-        gCtx.globalCompositeOperation = 'source-over';
-    }
+    gCtx.drawImage(ghostCrushedBuf, 0, 0);
+    ghostIsResurface = false;
+
     ghostCanvas.classList.add('visible');
     ghostCanvas.style.opacity = '1';
 
@@ -2090,9 +2176,32 @@ function onWorkerFrame(msg) {
     mascotCtx.drawImage(featheredMask, 0, 0);
     mascotCtx.globalCompositeOperation = 'source-over';
 
-    // ── Ghost opacity ──
+    // ── Ghost opacity + swap between crushed/full-color ──
     ghostCanvas.style.opacity = msg.ghostOpacity.toFixed(3);
-    if (!msg.ghostVisible) ghostCanvas.classList.remove('visible');
+    if (msg.ghostVisible) {
+        // Swap ghost content if resurface state changed
+        if (msg.ghostResurface && !ghostIsResurface && ghostFullBuf) {
+            let gCtx = ghostCanvas.getContext('2d');
+            gCtx.clearRect(0, 0, MSIZE, MSIZE);
+            gCtx.drawImage(ghostFullBuf, 0, 0);
+            ghostIsResurface = true;
+        } else if (!msg.ghostResurface && ghostIsResurface && ghostCrushedBuf) {
+            let gCtx = ghostCanvas.getContext('2d');
+            gCtx.clearRect(0, 0, MSIZE, MSIZE);
+            gCtx.drawImage(ghostCrushedBuf, 0, 0);
+            ghostIsResurface = false;
+        }
+        if (!ghostCanvas.classList.contains('visible')) ghostCanvas.classList.add('visible');
+    } else {
+        ghostCanvas.classList.remove('visible');
+        // Reset to crushed for next initial appearance
+        if (ghostIsResurface && ghostCrushedBuf) {
+            let gCtx = ghostCanvas.getContext('2d');
+            gCtx.clearRect(0, 0, MSIZE, MSIZE);
+            gCtx.drawImage(ghostCrushedBuf, 0, 0);
+            ghostIsResurface = false;
+        }
+    }
 
     // ── Status info ──
     if (msg.statusText) {

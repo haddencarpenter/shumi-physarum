@@ -127,6 +127,7 @@ let formationMode = 1;
 let bgOffscreen, bgOffCtx;
 let mascotOffscreen, mascotOffCtx;
 let ghostOffscreen, ghostOffCtx;
+let ghostFullOffscreen, ghostFullOffCtx;  // full-color version for resurface
 
 // Palette state
 let activePalette = PALETTES[0];
@@ -175,9 +176,14 @@ let _fillDensity = 3;
 let _trailBoost = 1.0;
 
 // Ghost fade state
-let ghostFadeStart = -1;
 const GHOST_HOLD_FRAMES = 90;
 const GHOST_FADE_FRAMES = 180;
+// Cyclic resurface constants
+const RESURFACE_FIRST = 1500;   // frames before first resurface (~25s)
+const RESURFACE_CYCLE = 1800;   // frames per cycle (~30s)
+const RESURFACE_FADE  = 180;    // frames to fade in/out (~3s)
+const RESURFACE_HOLD  = 90;     // frames at peak (~1.5s)
+const RESURFACE_PEAK  = 0.30;   // max opacity on resurface
 
 // Mask data (received from main thread)
 let maskImageData = null; // ImageData of the mascot
@@ -424,7 +430,11 @@ function buildGhost() {
     // if available, otherwise skip feathering in worker — main thread handles final mask)
     ghostOffCtx.globalCompositeOperation = 'source-over';
 
-    ghostFadeStart = -1;
+    // Build full-color version for cyclic resurface (no color crush, just the art)
+    if (ghostFullOffscreen) {
+        ghostFullOffCtx.clearRect(0, 0, MSIZE, MSIZE);
+        ghostFullOffCtx.drawImage(tmpCanvas, 0, 0);
+    }
 }
 
 function getMaskFoodPoints(count) {
@@ -674,8 +684,6 @@ function initAll() {
     selectPalette(seed);
     srng(seed);
 
-    ghostFadeStart = -1;
-
     // Shuffle code buffer
     CODE_BUF = CODE_SRC.slice();
     for (let i = CODE_LEN - 1; i > 0; i--) {
@@ -690,6 +698,8 @@ function initAll() {
     mascotOffCtx = mascotOffscreen.getContext('2d');
     ghostOffscreen = new OffscreenCanvas(MSIZE, MSIZE);
     ghostOffCtx = ghostOffscreen.getContext('2d');
+    ghostFullOffscreen = new OffscreenCanvas(MSIZE, MSIZE);
+    ghostFullOffCtx = ghostFullOffscreen.getContext('2d');
 
     // Build mask data
     buildMask();
@@ -933,27 +943,48 @@ function handleTick() {
         mascotOffCtx.globalAlpha = 1;
     }
 
-    // ── Ghost opacity computation ──
-    let ghostOpacity = 1;
-    let ghostVisible = true;
-    if (ghostFadeStart < 0 && msFc > GHOST_HOLD_FRAMES) ghostFadeStart = msFc;
-    if (ghostFadeStart > 0) {
-        let elapsed = msFc - ghostFadeStart;
-        let t = Math.min(1, elapsed / GHOST_FADE_FRAMES);
+    // ── Ghost opacity — initial hold+fade, then periodic resurface ──
+    let ghostOpacity = 0;
+    let ghostVisible = false;
+
+    if (msFc <= GHOST_HOLD_FRAMES) {
+        // Phase 1: initial hold
+        ghostOpacity = 1;
+        ghostVisible = true;
+    } else if (msFc <= GHOST_HOLD_FRAMES + GHOST_FADE_FRAMES) {
+        // Phase 2: initial fade out
+        let t = (msFc - GHOST_HOLD_FRAMES) / GHOST_FADE_FRAMES;
         ghostOpacity = 1 - t * t * (3 - 2 * t);
-        if (ghostOpacity <= 0.001) { ghostVisible = false; ghostOpacity = 0; }
+        ghostVisible = ghostOpacity > 0.001;
+    } else if (msFc >= RESURFACE_FIRST) {
+        // Phase 3: cyclic resurface
+        let cycleFrame = (msFc - RESURFACE_FIRST) % RESURFACE_CYCLE;
+        if (cycleFrame < RESURFACE_FADE) {
+            let t = cycleFrame / RESURFACE_FADE;
+            ghostOpacity = RESURFACE_PEAK * t * t * (3 - 2 * t);
+            ghostVisible = true;
+        } else if (cycleFrame < RESURFACE_FADE + RESURFACE_HOLD) {
+            ghostOpacity = RESURFACE_PEAK;
+            ghostVisible = true;
+        } else if (cycleFrame < RESURFACE_FADE * 2 + RESURFACE_HOLD) {
+            let t = (cycleFrame - RESURFACE_FADE - RESURFACE_HOLD) / RESURFACE_FADE;
+            ghostOpacity = RESURFACE_PEAK * (1 - t * t * (3 - 2 * t));
+            ghostVisible = ghostOpacity > 0.001;
+        }
     }
 
     // ── Transfer bitmaps ──
     let bgBitmap = bgOffscreen.transferToImageBitmap();
     let mascotBitmap = mascotOffscreen.transferToImageBitmap();
 
+    let ghostResurface = msFc > GHOST_HOLD_FRAMES + GHOST_FADE_FRAMES && msFc >= RESURFACE_FIRST && ghostVisible;
     let msg = {
         type: 'frame',
         bgBitmap,
         mascotBitmap,
         ghostOpacity,
         ghostVisible,
+        ghostResurface,
         frameNum: msFc,
     };
 
@@ -1015,18 +1046,20 @@ self.onmessage = function(e) {
 
             initAll();
 
-            // Send ready with ghost bitmap and palette info
+            // Send ready with ghost bitmaps and palette info
             let ghostBitmap = ghostOffscreen.transferToImageBitmap();
+            let ghostFullBitmap = ghostFullOffscreen.transferToImageBitmap();
             self.postMessage({
                 type: 'ready',
                 ghostBitmap,
+                ghostFullBitmap,
                 paletteName: activePalette.name,
                 textureName: activeTextureName,
                 chromaticWarm: activePalette.chromatic[0],
                 chromaticCool: activePalette.chromatic[1],
                 bgParams: { ...BG },
                 msParams: { ...MS },
-            }, [ghostBitmap]);
+            }, [ghostBitmap, ghostFullBitmap]);
             break;
         }
 
@@ -1073,16 +1106,18 @@ self.onmessage = function(e) {
             if (msg.maskImageData) maskImageData = msg.maskImageData;
             initAll();
             let ghostBmp = ghostOffscreen.transferToImageBitmap();
+            let ghostFullBmp = ghostFullOffscreen.transferToImageBitmap();
             self.postMessage({
                 type: 'ready',
                 ghostBitmap: ghostBmp,
+                ghostFullBitmap: ghostFullBmp,
                 paletteName: activePalette.name,
                 textureName: activeTextureName,
                 chromaticWarm: activePalette.chromatic[0],
                 chromaticCool: activePalette.chromatic[1],
                 bgParams: { ...BG },
                 msParams: { ...MS },
-            }, [ghostBmp]);
+            }, [ghostBmp, ghostFullBmp]);
             break;
 
         case 'resize':
@@ -1092,16 +1127,18 @@ self.onmessage = function(e) {
             if (msg.maskImageData) maskImageData = msg.maskImageData;
             initAll();
             let gBmp = ghostOffscreen.transferToImageBitmap();
+            let gFullBmp = ghostFullOffscreen.transferToImageBitmap();
             self.postMessage({
                 type: 'ready',
                 ghostBitmap: gBmp,
+                ghostFullBitmap: gFullBmp,
                 paletteName: activePalette.name,
                 textureName: activeTextureName,
                 chromaticWarm: activePalette.chromatic[0],
                 chromaticCool: activePalette.chromatic[1],
                 bgParams: { ...BG },
                 msParams: { ...MS },
-            }, [gBmp]);
+            }, [gBmp, gFullBmp]);
             break;
     }
 };
