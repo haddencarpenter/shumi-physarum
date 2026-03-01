@@ -383,6 +383,24 @@ const STENCIL_START = 0;          // frames when ASCII stencil begins accumulati
 const STENCIL_END = 90;           // frames when stencil is fully formed (~1.5s at 60fps)
 let pulsePhase = 0;
 
+// ── Parallax Depth System ──
+// 3 layers create vertical depth perception in the background ASCII
+// Layer 1 (Substrate): dim, massive chars, 0.5x scroll — "Raw Data Ocean"
+// Layer 2 (Network): standard thick veins — "Computed Signals" (unchanged renderTrail)
+// Layer 3 (Interface): sharp, high-contrast chars inside text repulsion zone border
+const PARALLAX_ENABLED = true;
+const LAYER1_SPEED = 0.5;        // scroll multiplier for substrate layer
+const LAYER1_ALPHA = 0.12;       // dim substrate opacity
+const LAYER1_CELL_SCALE = 2.0;   // 2x character size for substrate
+const LAYER3_ALPHA = 0.7;        // sharp interface border opacity
+const LAYER3_GLOW_WIDTH = 40;    // px thickness of interface glow ring
+
+// ── Luminance Damping ──
+// Low-pass filter prevents high-frequency flicker; chars fade in/out over ~3.5s
+// lumBuffer stores per-cell smoothed brightness, updated each frame
+const LUM_DAMP_RATE = 0.03;      // ~3.5s to reach target at 60fps (1-0.97^210 ≈ 1)
+let bgLumBuffer = null;           // Float32Array, allocated in initAll
+
 // ── Formation modes ──
 // 1: Ramp — ASCII density symbols shaped by edge strength
 // 2: Code — scrolling trading code characters fill mascot shape
@@ -461,6 +479,13 @@ const CODE_LINES = [
 const CODE_SRC = CODE_LINES.join(' ').split('');
 const CODE_LEN = CODE_SRC.length;
 let CODE_BUF = CODE_SRC.slice();
+
+// ── High-Signal Buffer: structural characters for background parallax ──
+// Only characters with visual weight — pipes, brackets, hex, operators
+// Used for BG Layer 1 (Substrate) and Layer 3 (Interface border)
+const HIGHSIG_CHARS = '||++__[]0x{}=><:;##%%@@00110xFF'.split('');
+const HIGHSIG_LEN = HIGHSIG_CHARS.length;
+let HIGHSIG_BUF = HIGHSIG_CHARS.slice();
 
 // Active palette (set per seed in initAll)
 let activePalette = PALETTES[0];
@@ -1109,7 +1134,7 @@ function seedTrail(trail, cx, cy, w, h, spawnR) {
     }
 }
 
-function renderTrail(ctx, trail, w, h, P, colors) {
+function renderTrail(ctx, trail, w, h, P, colors, lumBuffer) {
     colors = colors || COLORS;
     let base = h2r(colors[0]), bright = h2r(colors[1]), hot = h2r(colors[2]);
 
@@ -1131,12 +1156,30 @@ function renderTrail(ctx, trail, w, h, P, colors) {
     let brightMult = 1 + pulse * PULSE_BRIGHT;
     let rampShift = pulse * PULSE_RAMP;
 
+    // Luminance damping: smooth out per-cell brightness over time
+    let useDamping = lumBuffer && lumBuffer.length >= cols * rows;
+    let dampRate = LUM_DAMP_RATE;
+
     for (let row = 0; row < rows; row++) {
         let py = row * cellH + Math.floor(cellH / 2);
         for (let col = 0; col < cols; col++) {
             let px = col * cellW + Math.floor(cellW / 2);
             if (py >= h || px >= w) continue;
-            let v = trail[py * w + px] * P.trailBright;
+            let vRaw = trail[py * w + px] * P.trailBright;
+
+            // Low-pass damping: smoothly track target brightness
+            let cellIdx = row * cols + col;
+            let v;
+            if (useDamping) {
+                let target = vRaw;
+                let current = lumBuffer[cellIdx];
+                // Exponential smoothing toward target
+                current += (target - current) * dampRate;
+                lumBuffer[cellIdx] = current;
+                v = current;
+            } else {
+                v = vRaw;
+            }
 
             // Skip empty cells
             if (v < 1) continue;
@@ -1166,6 +1209,117 @@ function renderTrail(ctx, trail, w, h, P, colors) {
                 g = base.g + (bright.g - base.g) * t;
                 b = base.b + (bright.b - base.b) * t;
             }
+
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = `rgb(${Math.min(255,r)|0},${Math.min(255,g)|0},${Math.min(255,b)|0})`;
+            ctx.fillText(ch, col * cellW + Math.floor(cellW / 2), row * cellH);
+        }
+    }
+    ctx.globalAlpha = 1;
+}
+
+// ── Parallax Layer 1: Substrate ──
+// Dim, massive characters at 0.5x scroll speed — "Raw Data Ocean"
+function renderSubstrate(ctx, trail, w, h, P, colors) {
+    if (!PARALLAX_ENABLED || IS_MOBILE) return; // skip on mobile for perf
+    let base = h2r(colors[0]), bright = h2r(colors[1]);
+    let scale = LAYER1_CELL_SCALE;
+    let cellW = Math.floor(CELL_W * scale);
+    let cellH = Math.floor(CELL_H * scale);
+    let cols = Math.floor(w / cellW);
+    let rows = Math.floor(h / cellH);
+    let fontSize = cellH - 2;
+    ctx.font = `bold ${fontSize}px 'Courier New'`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+
+    // Slow scroll offset — 0.5x of main pulse phase creates depth parallax
+    let scrollOff = Math.floor(bgFc * LAYER1_SPEED * 0.05);
+    let pulse = Math.sin(pulsePhase * LAYER1_SPEED);
+    let brightMult = 1 + pulse * 0.1; // subtler pulse for substrate
+
+    for (let row = 0; row < rows; row++) {
+        // Sample trail from the center of the substrate cell
+        let py = row * cellH + Math.floor(cellH / 2);
+        for (let col = 0; col < cols; col++) {
+            let px = col * cellW + Math.floor(cellW / 2);
+            if (py >= h || px >= w) continue;
+            let v = trail[py * w + px] * P.trailBright;
+            if (v < 3) continue; // higher threshold — only show where there's real signal
+
+            let vPulsed = v * brightMult;
+            // Use high-signal characters for substrate
+            let chIdx = ((row + scrollOff) * cols + col) % HIGHSIG_LEN;
+            let ch = HIGHSIG_BUF[chIdx];
+
+            // Very dim opacity — these are the deep background
+            let rawAlpha = Math.min(1, v / 80);
+            let alpha = rawAlpha * rawAlpha * LAYER1_ALPHA;
+            if (alpha < 0.005) continue;
+
+            // Muted color — mostly base, slight bright tint
+            let t = Math.min(vPulsed / 60, 1);
+            let r = base.r + (bright.r - base.r) * t * 0.4;
+            let g = base.g + (bright.g - base.g) * t * 0.4;
+            let b = base.b + (bright.b - base.b) * t * 0.4;
+
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = `rgb(${Math.min(255,r)|0},${Math.min(255,g)|0},${Math.min(255,b)|0})`;
+            ctx.fillText(ch, col * cellW + Math.floor(cellW / 2), row * cellH);
+        }
+    }
+    ctx.globalAlpha = 1;
+}
+
+// ── Parallax Layer 3: Interface Border ──
+// Sharp, high-contrast chars that appear only inside the text repulsion zone perimeter
+// Creates a glowing structural frame around the mascot area
+function renderInterfaceBorder(ctx, trail, w, h, P, colors, cx, cy, innerR, outerR) {
+    if (!PARALLAX_ENABLED || IS_MOBILE) return;
+    let bright = h2r(colors[1]), hot = h2r(colors[2]);
+    let cellW = CELL_W;
+    let cellH = CELL_H;
+    let cols = Math.floor(w / cellW);
+    let rows = Math.floor(h / cellH);
+    let fontSize = cellH - 2;
+    ctx.font = `bold ${fontSize}px 'Courier New'`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+
+    let pulse = Math.sin(pulsePhase);
+    let brightMult = 1 + pulse * 0.15;
+
+    for (let row = 0; row < rows; row++) {
+        let py = row * cellH + Math.floor(cellH / 2);
+        for (let col = 0; col < cols; col++) {
+            let px = col * cellW + Math.floor(cellW / 2);
+            if (py >= h || px >= w) continue;
+
+            // Distance from mascot center
+            let dx = px - cx, dy = py - cy;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Only render in the annular zone between innerR and outerR
+            if (dist < innerR || dist > outerR) continue;
+
+            let v = trail[py * w + px] * P.trailBright;
+            if (v < 2) continue;
+
+            // Ring falloff: brightest at innerR, fading toward outerR
+            let ringT = 1 - (dist - innerR) / (outerR - innerR);
+            ringT = ringT * ringT; // quadratic falloff toward outer edge
+
+            let ch = HIGHSIG_BUF[(row * cols + col) % HIGHSIG_LEN];
+
+            let rawAlpha = Math.min(1, v / 40);
+            let alpha = rawAlpha * ringT * LAYER3_ALPHA;
+            if (alpha < 0.01) continue;
+
+            let vPulsed = v * brightMult;
+            let t = Math.min(vPulsed / 50, 1);
+            let r = bright.r + (hot.r - bright.r) * t * 0.6;
+            let g = bright.g + (hot.g - bright.g) * t * 0.6;
+            let b = bright.b + (hot.b - bright.b) * t * 0.6;
 
             ctx.globalAlpha = alpha;
             ctx.fillStyle = `rgb(${Math.min(255,r)|0},${Math.min(255,g)|0},${Math.min(255,b)|0})`;
@@ -1408,6 +1562,12 @@ function initAll() {
         let j = Math.floor(rng() * (i + 1));
         let tmp = CODE_BUF[i]; CODE_BUF[i] = CODE_BUF[j]; CODE_BUF[j] = tmp;
     }
+    // Shuffle high-signal buffer independently
+    HIGHSIG_BUF = HIGHSIG_CHARS.slice();
+    for (let i = HIGHSIG_LEN - 1; i > 0; i--) {
+        let j = Math.floor(rng() * (i + 1));
+        let tmp = HIGHSIG_BUF[i]; HIGHSIG_BUF[i] = HIGHSIG_BUF[j]; HIGHSIG_BUF[j] = tmp;
+    }
 
     // ── Background sim — network radiates from mascot ring to edges ──
     bgCx = VW / 2;
@@ -1416,6 +1576,8 @@ function initAll() {
     bgAgents = [];
     bgTrail = new Float32Array(VW * VH);
     bgTrailPrev = new Float32Array(VW * VH);
+    // Allocate luminance damping buffer for background
+    bgLumBuffer = new Float32Array(VW * VH);
     generateBgFoods();
     // Seed trail on the spawn ring and at food targets
     let spawnRingR = MSIZE * 0.35;
@@ -1510,19 +1672,52 @@ function frame() {
     let bgD = diffuse(bgTrail, bgTrailPrev, VW, VH, BG.diffusion, BG.decay);
     bgTrail = bgD.trail; bgTrailPrev = bgD.trailPrev;
 
-    // Gentle suppression right at mascot center so trails don't pile up under the stencil
+    // ── Cradle Logic: "Boundary Hugger" ──
+    // Instead of simply suppressing trails under the mascot, we redistribute
+    // trail energy to the perimeter, creating a glowing "cradle" that physically
+    // frames the mascot with high-density characters.
     let fadeR = MSIZE * 0.22;
     let fadeR2 = fadeR * fadeR;
-    let yMin = Math.max(0, Math.floor(bgCy - fadeR)), yMax = Math.min(VH - 1, Math.ceil(bgCy + fadeR));
-    let xMin = Math.max(0, Math.floor(bgCx - fadeR)), xMax = Math.min(VW - 1, Math.ceil(bgCx + fadeR));
+    let cradleR = fadeR * 1.15;      // slightly outside suppression = cradle ring
+    let cradleR2 = cradleR * cradleR;
+    let cradleWidth = fadeR * 0.25;  // thickness of cradle accumulation ring
+    let yMin = Math.max(0, Math.floor(bgCy - cradleR)), yMax = Math.min(VH - 1, Math.ceil(bgCy + cradleR));
+    let xMin = Math.max(0, Math.floor(bgCx - cradleR)), xMax = Math.min(VW - 1, Math.ceil(bgCx + cradleR));
+
+    // First pass: suppress interior and accumulate displaced energy
+    let displaced = 0;
+    let perimeterPixels = 0;
     for (let y = yMin; y <= yMax; y++) {
         let dy = y - bgCy;
         for (let x = xMin; x <= xMax; x++) {
             let dx = x - bgCx;
             let d2 = dx * dx + dy * dy;
+            let idx = y * VW + x;
             if (d2 < fadeR2) {
                 let f = Math.sqrt(d2) / fadeR; // 0 at center, 1 at edge
-                bgTrail[y * VW + x] *= 0.3 + f * 0.7; // gentle: 30% at center, 100% at edge
+                let suppression = 0.3 + f * 0.7;
+                let before = bgTrail[idx];
+                bgTrail[idx] *= suppression;
+                displaced += before - bgTrail[idx];
+            } else if (d2 < cradleR2) {
+                perimeterPixels++;
+            }
+        }
+    }
+
+    // Second pass: deposit displaced energy onto the cradle perimeter ring
+    if (perimeterPixels > 0 && displaced > 0) {
+        let depositPer = displaced / perimeterPixels * 0.6; // 60% redistribution
+        let tmax = 180; // cap to prevent blowout
+        for (let y = yMin; y <= yMax; y++) {
+            let dy = y - bgCy;
+            for (let x = xMin; x <= xMax; x++) {
+                let dx = x - bgCx;
+                let d2 = dx * dx + dy * dy;
+                if (d2 >= fadeR2 && d2 < cradleR2) {
+                    let idx = y * VW + x;
+                    bgTrail[idx] = Math.min(tmax, bgTrail[idx] + depositPer);
+                }
             }
         }
     }
@@ -1538,8 +1733,22 @@ function frame() {
     let msD = diffuse(msTrail, msTrailPrev, MSIZE, MSIZE, MS.diffusion, MS.decay);
     msTrail = msD.trail; msTrailPrev = msD.trailPrev;
 
-    // ── Render background ──
-    renderTrail(bgSimCtx, bgTrail, VW, VH, BG, BG_COLORS);
+    // ── Render background: 3-layer parallax depth ──
+    // Order: Layer 2 first (clears canvas), then Layer 1 & 3 overlay on top
+
+    // Layer 2 (Network): standard thick veins — "Computed Signals"
+    // Clears canvas and draws the primary trail. Luminance damping smooths flicker.
+    renderTrail(bgSimCtx, bgTrail, VW, VH, BG, BG_COLORS, bgLumBuffer);
+
+    // Layer 1 (Substrate): dim massive chars at 0.5x scroll — "Raw Data Ocean"
+    // Overlays beneath the network perceptually (dim + large = reads as deep)
+    renderSubstrate(bgSimCtx, bgTrail, VW, VH, BG, BG_COLORS);
+
+    // Layer 3 (Interface): sharp border ring around mascot — "The Interface"
+    let ifaceInner = MSIZE * 0.30;  // starts at mascot edge
+    let ifaceOuter = ifaceInner + LAYER3_GLOW_WIDTH;
+    renderInterfaceBorder(bgSimCtx, bgTrail, VW, VH, BG, BG_COLORS, bgCx, bgCy, ifaceInner, ifaceOuter);
+
     bgCtx.drawImage(bgSimCanvas, 0, 0);
 
     // Atmospheric vignette — tighter falloff centered on mascot, creates depth
