@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>shumi</title>
+    <meta property="og:title" content="shumi">
+    <meta property="og:description" content="physarum simulation. each seed is different.">
+    <meta property="og:image" content="https://haddencarpenter.github.io/shumi-physarum/og-thumbnail.png">
+    <meta property="og:url" content="https://haddencarpenter.github.io/shumi-physarum/landing.html">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="shumi">
+    <meta name="twitter:description" content="physarum simulation. each seed is different.">
+    <meta name="twitter:image" content="https://haddencarpenter.github.io/shumi-physarum/og-thumbnail.png">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0D0D0D; overflow: hidden; font-family: 'Courier New', monospace; }
+        /* Background physarum — fills entire viewport */
+        #bg { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; }
+        /* Ghost afterimage — barely perceptible original mascot, burned retina effect */
+        #ghost-layer {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;
+            opacity: 0; transition: opacity 0.6s ease-out;
+            pointer-events: none;
+        }
+        #ghost-layer.visible { opacity: 1; }
+        /* Resurface layer — persistent full-color mascot art, retinal burn base */
+        #resurface-layer {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1;
+            opacity: 0; pointer-events: none;
+        }
+        /* Mascot layer — centered, chromatic orbit */
+        #mascot-layer {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;
+            animation: chromatic-orbit 6s linear infinite, breathe 5s ease-in-out infinite;
+            opacity: 0;
+        }
+        #mascot-layer.entered { animation: entrance 1.2s cubic-bezier(0.16,1,0.3,1) forwards, chromatic-orbit 6s linear 1.2s infinite, breathe 5s ease-in-out 1.2s infinite; }
+        @keyframes entrance {
+            0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
+            100% { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+        }
+        @keyframes breathe {
+            0%   { transform: translate(-50%, -50%) scale(1.0); }
+            50%  { transform: translate(-50%, -50%) scale(1.03); }
+            100% { transform: translate(-50%, -50%) scale(1.0); }
+        }
+        @keyframes chromatic-orbit {
+            0%   { filter: drop-shadow(5px 0 3px rgba(255,60,40,0.30)) drop-shadow(-5px 0 3px rgba(40,220,255,0.30)); }
+            25%  { filter: drop-shadow(0 5px 3px rgba(255,60,40,0.30)) drop-shadow(0 -5px 3px rgba(40,220,255,0.30)); }
+            50%  { filter: drop-shadow(-5px 0 3px rgba(255,60,40,0.30)) drop-shadow(5px 0 3px rgba(40,220,255,0.30)); }
+            75%  { filter: drop-shadow(0 -5px 3px rgba(255,60,40,0.30)) drop-shadow(0 5px 3px rgba(40,220,255,0.30)); }
+            100% { filter: drop-shadow(5px 0 3px rgba(255,60,40,0.30)) drop-shadow(-5px 0 3px rgba(40,220,255,0.30)); }
+        }
+
+        /* Subtle chromatic on background too — slower, dimmer */
+        #bg {
+            animation: bg-chromatic 14s linear infinite;
+        }
+        @keyframes bg-chromatic {
+            0%   { filter: drop-shadow(3px 0 1px rgba(255,60,40,0.08)) drop-shadow(-3px 0 1px rgba(40,220,255,0.08)); }
+            50%  { filter: drop-shadow(-3px 0 1px rgba(255,60,40,0.08)) drop-shadow(3px 0 1px rgba(40,220,255,0.08)); }
+            100% { filter: drop-shadow(3px 0 1px rgba(255,60,40,0.08)) drop-shadow(-3px 0 1px rgba(40,220,255,0.08)); }
+        }
+        /* Lighter chromatic on mobile — small offsets, low opacity, no bg chromatic */
+        @media (max-width: 768px) {
+            #mascot-layer.entered {
+                animation: entrance 1.2s cubic-bezier(0.16,1,0.3,1) forwards, chromatic-orbit-mobile 8s linear 1.2s infinite, breathe 5s ease-in-out 1.2s infinite !important;
+            }
+            #bg { animation: none !important; filter: none !important; }
+        }
+        @keyframes chromatic-orbit-mobile {
+            0%   { filter: drop-shadow(3px 0 2px rgba(255,60,40,0.20)) drop-shadow(-3px 0 2px rgba(40,220,255,0.20)); }
+            25%  { filter: drop-shadow(0 3px 2px rgba(255,60,40,0.20)) drop-shadow(0 -3px 2px rgba(40,220,255,0.20)); }
+            50%  { filter: drop-shadow(-3px 0 2px rgba(255,60,40,0.20)) drop-shadow(3px 0 2px rgba(40,220,255,0.20)); }
+            75%  { filter: drop-shadow(0 -3px 2px rgba(255,60,40,0.20)) drop-shadow(0 3px 2px rgba(40,220,255,0.20)); }
+            100% { filter: drop-shadow(3px 0 2px rgba(255,60,40,0.20)) drop-shadow(-3px 0 2px rgba(40,220,255,0.20)); }
+        }
+        /* Hidden work canvases */
+        .hidden-canvas { position: absolute; top: 0; left: 0; opacity: 0; pointer-events: none; width: 0; height: 0; overflow: hidden; }
+        /* Composite output for recording */
+        #composite { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; opacity: 0; }
+        /* Landing page: mascot at 35%, no chromatic on BG */
+        #mascot-layer, #mascot-layer.entered { animation: entrance 1.2s cubic-bezier(0.16,1,0.3,1) forwards !important; filter: none !important; top: 35%; }
+        #ghost-layer, #resurface-layer { filter: none !important; top: 35%; }
+        #bg { animation: none !important; filter: none !important; }
+    </style>
+</head>
+<body>
+    <!-- Background physarum: full viewport -->
+    <canvas id="bg"></canvas>
+    <!-- Ghost afterimage: barely perceptible original mascot, fades as trails build -->
+    <canvas id="ghost-layer"></canvas>
+    <!-- Resurface: full-color mascot art, cyclic pulse -->
+    <canvas id="resurface-layer"></canvas>
+    <!-- Mascot masked physarum: square, centered -->
+    <canvas id="mascot-layer"></canvas>
+    <!-- Hidden work canvases -->
+    <div class="hidden-canvas">
+        <canvas id="bg-sim"></canvas>
+        <canvas id="mascot-sim"></canvas>
+        <canvas id="mask-canvas"></canvas>
+    </div>
+    <!-- Composite for recording -->
+    <canvas id="composite"></canvas>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  WORKER FEATURE DETECTION
+// ═══════════════════════════════════════════════════════════════
+const USE_WORKER = typeof OffscreenCanvas !== 'undefined'
+    && !new URLSearchParams(window.location.search).has('legacy');
+
+// Forward parameter changes to worker (no-op in legacy mode)
+function workerUpdateParam(key, value) {
+    if (USE_WORKER && typeof worker !== 'undefined' && worker) worker.postMessage({ type: 'updateParams', key, value });
+}
+function workerUpdateSim(target, key, value) {
+    if (USE_WORKER && typeof worker !== 'undefined' && worker) worker.postMessage({ type: 'updateSimParam', target, key, value });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  CONFIG (shared between legacy & worker paths)
+// ═══════════════════════════════════════════════════════════════
+
+// ── Palette families ──
+const TEXTURES = {
+    // Warm, steady glow. Medium everything, the baseline.
+    standard:    { bg: { speed: 7.0, sensorDist: 22, diffusion: 0.25, deposit: 12, decay: 0.960, turnSpeed: 26, trailBright: 1.3, foodCount: 12 },
+                   ms: { speed: 3.2, sensorDist: 22, diffusion: 0.25, deposit: 4, decay: 0.925, turnSpeed: 22, trailBright: 0.8 } },
+    // Sharp defined veins, gem-like facets. Low diffusion keeps structure.
+    crystalline: { bg: { speed: 5.5, sensorDist: 18, diffusion: 0.10, deposit: 18, decay: 0.950, turnSpeed: 22, trailBright: 1.6, foodCount: 16 },
+                   ms: { speed: 3.0, sensorDist: 20, diffusion: 0.10, deposit: 5, decay: 0.920, turnSpeed: 18, trailBright: 0.9 } },
+    // Soft ghostly haze. High diffusion, trails dissolve quickly.
+    smoke:       { bg: { speed: 7.5, sensorDist: 28, diffusion: 0.45, deposit: 8,  decay: 0.972, turnSpeed: 30, trailBright: 1.0, foodCount: 8 },
+                   ms: { speed: 3.5, sensorDist: 24, diffusion: 0.30, deposit: 3, decay: 0.930, turnSpeed: 24, trailBright: 0.7 } },
+    // Dense branching networks, organic growth. The gold standard.
+    coral:       { bg: { speed: 4.5, sensorDist: 30, diffusion: 0.18, deposit: 14, decay: 0.965, turnSpeed: 22, trailBright: 1.4, foodCount: 18 },
+                   ms: { speed: 3.0, sensorDist: 26, diffusion: 0.20, deposit: 4, decay: 0.928, turnSpeed: 20, trailBright: 0.8 } },
+    // Thin delicate threads, fast fade. Silk in water.
+    silk:        { bg: { speed: 8.0, sensorDist: 20, diffusion: 0.30, deposit: 6,  decay: 0.942, turnSpeed: 28, trailBright: 1.8, foodCount: 10 },
+                   ms: { speed: 3.5, sensorDist: 22, diffusion: 0.28, deposit: 3, decay: 0.922, turnSpeed: 22, trailBright: 0.9 } },
+    // Long streaky paths, nervous energy. Lightning in a bottle.
+    electric:    { bg: { speed: 9.0, sensorDist: 14, diffusion: 0.15, deposit: 10, decay: 0.955, turnSpeed: 34, trailBright: 1.5, foodCount: 14 },
+                   ms: { speed: 3.8, sensorDist: 20, diffusion: 0.15, deposit: 4, decay: 0.925, turnSpeed: 26, trailBright: 0.8 } },
+    // Wide flowing rivers, heavy. Lava lamp.
+    flow:        { bg: { speed: 6.0, sensorDist: 26, diffusion: 0.42, deposit: 4,  decay: 0.938, turnSpeed: 20, trailBright: 0.8, foodCount: 6 },
+                   ms: { speed: 3.2, sensorDist: 24, diffusion: 0.30, deposit: 3, decay: 0.920, turnSpeed: 18, trailBright: 0.6, densityMult: 0.5, trailMax: 150 } },
+    // Tight clusters with bright nodes. Constellation map.
+    spore:       { bg: { speed: 6.0, sensorDist: 12, diffusion: 0.20, deposit: 16, decay: 0.948, turnSpeed: 24, trailBright: 1.8, foodCount: 20 },
+                   ms: { speed: 3.0, sensorDist: 20, diffusion: 0.18, deposit: 5, decay: 0.925, turnSpeed: 20, trailBright: 0.9 } },
+};
+
+const TEXTURE_NAMES = ['standard', 'crystalline', 'smoke', 'coral', 'silk', 'electric', 'flow', 'spore'];
+
+const PALETTES = [
+    { name: 'Ember',  mascot: ['#181208', '#E0B860', '#E8A070'], bg: ['#121010', '#9A8A55', '#8A7050'], chromatic: ['rgba(240,140,80,A)', 'rgba(80,180,220,A)'] },
+    { name: 'Frost',  mascot: ['#0A1018', '#70B0E0', '#90C8E8'], bg: ['#0C1014', '#507898', '#608090'], chromatic: ['rgba(100,180,240,A)', 'rgba(180,120,220,A)'] },
+    { name: 'Moss',   mascot: ['#0C1408', '#88C870', '#B0D890'], bg: ['#0C1210', '#608858', '#6A8060'], chromatic: ['rgba(120,220,100,A)', 'rgba(220,200,80,A)'] },
+    { name: 'Pearl',  mascot: ['#0E0E0E', '#C0B8B0', '#E0D8D0'], bg: ['#0A0A0A', '#807870', '#9A9490'], chromatic: ['rgba(200,200,220,A)', 'rgba(140,130,160,A)'] },
+    { name: 'Bloom',  mascot: ['#140A10', '#D880B8', '#E0A0C8'], bg: ['#120C10', '#906878', '#886878'], chromatic: ['rgba(220,120,180,A)', 'rgba(100,220,180,A)'] },
+    { name: 'Honey',  mascot: ['#14120A', '#E0C860', '#E8C080'], bg: ['#12100A', '#988850', '#8A8058'], chromatic: ['rgba(230,200,80,A)', 'rgba(80,130,220,A)'] },
+    { name: 'Tide',   mascot: ['#080C14', '#6888C0', '#80A0D0'], bg: ['#0A0C12', '#506888', '#486080'], chromatic: ['rgba(100,140,220,A)', 'rgba(220,140,100,A)'] },
+    { name: 'Rust',   mascot: ['#140C08', '#C88060', '#D8A080'], bg: ['#120A0A', '#8A6050', '#806048'], chromatic: ['rgba(210,130,90,A)', 'rgba(90,200,180,A)'] },
+];
+
+// ASCII trail rendering config
+const CELL_W = 8;
+const CELL_H = 14;
+const CHAR_RAMP = ' ·:;=+*#%@';  // 10 levels, low-to-high density (fallback)
+const PULSE_SPEED = 0.055;        // radians per frame (~3.5s full cycle, more lively)
+const PULSE_BRIGHT = 0.25;        // +/-25% brightness oscillation
+const PULSE_RAMP = 1.2;           // +/-1.2 character levels shift
+const STENCIL_START = 0;          // frames when ASCII stencil begins accumulating (immediate)
+const STENCIL_END = 90;           // frames when stencil is fully formed (~1.5s at 60fps)
+let pulsePhase = 0;
+
+// ── Parallax Depth System ──
+// 3 layers create vertical depth perception in the background ASCII
+// Layer 1 (Substrate): dim, massive chars, 0.5x scroll — "Raw Data Ocean"
+// Layer 2 (Network): standard thick veins — "Computed Signals" (unchanged renderTrail)
+// Layer 3 (Interface): sharp, high-contrast chars inside text repulsion zone border
+const PARALLAX_ENABLED = true;
+const LAYER1_SPEED = 0.5;        // scroll multiplier for substrate layer
+const LAYER1_ALPHA = 0.12;       // dim substrate opacity
+const LAYER1_CELL_SCALE = 2.0;   // 2x character size for substrate
+const LAYER3_ALPHA = 0.7;        // sharp interface border opacity
+const LAYER3_GLOW_WIDTH = 40;    // px thickness of interface glow ring
+
+// ── Luminance Damping ──
+// Low-pass filter prevents high-frequency flicker; chars fade in/out over ~3.5s
+// lumBuffer stores per-cell smoothed brightness, updated each frame
+const LUM_DAMP_RATE = 0.03;      // ~3.5s to reach target at 60fps (1-0.97^210 ≈ 1)
+let bgLumBuffer = null;           // Float32Array, allocated in initAll
+
+// ── Formation modes ──
+// 1: Ramp — ASCII density symbols shaped by edge strength
+// 2: Code — scrolling trading code characters fill mascot shape
+// 3: Mold — pure physarum pixel trails, organic glow, no ASCII
+// 4: Hybrid — pixel mold base + faint ASCII overlay
+let formationMode = 1;  // default to Ramp mode
+
+// Algo code texture: real trading code that tiles across the ASCII grid
+const CODE_LINES = [
+    'let mark = exchange.getMarkPrice("BTC-PERP");',
+    'let index = exchange.getIndexPrice("BTC-PERP");',
+    'let basis = (mark - index) / index * 100;',
+    'let funding = await getFundingRate(symbol);',
+    'if (funding > 0.03 && oi_delta < -0.05) {',
+    '  openShort({ leverage: 5, size: notional });',
+    '}',
+    'let liqPrice = entry * (1 - 1/leverage + mm);',
+    'if (mark < liqPrice * 1.05) reducePosition(0.5);',
+    'const oi = await coinalyze.getOI("BTCUSDT");',
+    'let oiChange = (oi.current - oi.prev) / oi.prev;',
+    'if (oiChange > 0.08 && price.delta < -0.02) {',
+    '  signal = "LONG_SQUEEZE"; conviction = 0.85;',
+    '}',
+    'async function rebalanceHedge(pos) {',
+    '  let delta = pos.long.size - pos.short.size;',
+    '  if (Math.abs(delta) > threshold) {',
+    '    await placeOrder(delta > 0 ? "SELL" : "BUY",',
+    '      Math.abs(delta), "MARKET");',
+    '  }',
+    '}',
+    'let atr = calcATR(candles, 14);',
+    'let sl = entry - atr * 1.5;',
+    'let tp = entry + atr * 3.0;',
+    'let rr = (tp - entry) / (entry - sl);',
+    'function kelly(winRate, avgWin, avgLoss) {',
+    '  return winRate - (1 - winRate) / (avgWin/avgLoss);',
+    '}',
+    'let size = kelly(0.895, 2.1, 1) * balance;',
+    'size = Math.min(size, maxRisk * balance);',
+    'let pnl = (exit - entry) / entry * leverage;',
+    'let fee = notional * 2 * takerFee;',
+    'let netPnl = pnl * notional - fee;',
+    'for (let tf of ["5m","15m","1h","4h"]) {',
+    '  let sst = superTrend(ohlc[tf], 3, 10);',
+    '  if (sst.dir > 0) bullCount++;',
+    '}',
+    'if (bullCount >= 3) bias = "STRONG_LONG";',
+    'let fr8h = funding.rate * 3; // annualize',
+    'let carry = fr8h * 365 * notional;',
+    'if (carry > minYield && trend.aligned) {',
+    '  openCarryTrade(symbol, "LONG_SPOT_SHORT_PERP");',
+    '}',
+    'await ws.subscribe(`${symbol}@aggTrade`);',
+    'ws.on("message", (tick) => {',
+    '  cvd += tick.side === "BUY" ? tick.qty : -tick.qty;',
+    '  if (cvd < -threshold) emit("SELL_PRESSURE");',
+    '});',
+    'let margin = position.notional / leverage;',
+    'let mmr = margin * maintenanceRate;',
+    'let freeMargin = balance - margin + unrealizedPnl;',
+    'if (freeMargin < mmr * 2) closePosition();',
+    'let spread = askPrice - bidPrice;',
+    'let slip = size * avgSlippage[symbol];',
+    'let breakeven = entry + (fee * 2 + slip) / size;',
+    'function calcMaxLev(vol30d, balance) {',
+    '  let risk = vol30d * 2.5; // 2.5 sigma move',
+    '  return Math.floor(1 / risk);',
+    '}',
+    'if (exchange === "BYBIT") setTPSL(tp, sl, "FULL");',
+    'if (exchange === "BINANCE") setBracketOrder(tp, sl);',
+    'let longFunding = shorts.funding - longs.funding;',
+    'let netRate = longFunding * position.size;',
+    'emit("FUNDING_PNL", { rate: fr8h, net: netRate });',
+];
+// Flatten into a single char buffer; shuffled per seed in initAll
+const CODE_SRC = CODE_LINES.join(' ').split('');
+const CODE_LEN = CODE_SRC.length;
+let CODE_BUF = CODE_SRC.slice();
+
+// ── High-Signal Buffer: structural characters for background parallax ──
+// Only characters with visual weight — pipes, brackets, hex, operators
+// Used for BG Layer 1 (Substrate) and Layer 3 (Interface border)
+const HIGHSIG_CHARS = '||++__[]0x{}=><:;##%%@@00110xFF'.split('');
+const HIGHSIG_LEN = HIGHSIG_CHARS.length;
+let HIGHSIG_BUF = HIGHSIG_CHARS.slice();
+
+// Active palette (set per seed in initAll)
+let activePalette = PALETTES[0];
+let COLORS = [...activePalette.mascot];
+let BG_COLORS = [...activePalette.bg];
+
+// HSL helpers for per-seed drift
+function hexToHSL(hex) {
+    let r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+    let max = Math.max(r,g,b), min = Math.min(r,g,b), h, s, l = (max+min)/2;
+    if (max === min) { h = s = 0; } else {
+        let d = max - min;
+        s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+        if (max === r) h = ((g-b)/d + (g<b?6:0))/6;
+        else if (max === g) h = ((b-r)/d+2)/6;
+        else h = ((r-g)/d+4)/6;
+    }
+    return [h*360, s*100, l*100];
+}
+
+function hslToHex(h, s, l) {
+    h = ((h%360)+360)%360; s = Math.max(0,Math.min(100,s))/100; l = Math.max(0,Math.min(100,l))/100;
+    let c = (1-Math.abs(2*l-1))*s, x = c*(1-Math.abs((h/60)%2-1)), m = l-c/2;
+    let r,g,b;
+    if (h<60){r=c;g=x;b=0;} else if(h<120){r=x;g=c;b=0;} else if(h<180){r=0;g=c;b=x;}
+    else if(h<240){r=0;g=x;b=c;} else if(h<300){r=x;g=0;b=c;} else{r=c;g=0;b=x;}
+    let toHex = v => Math.round((v+m)*255).toString(16).padStart(2,'0');
+    return '#' + toHex(r) + toHex(g) + toHex(b);
+}
+
+function driftColor(hex, hueDrift, satDrift, lumDrift) {
+    let [h,s,l] = hexToHSL(hex);
+    return hslToHex(h + hueDrift, s + satDrift, l + lumDrift);
+}
+
+let activeTextureName = 'standard';
+
+function selectPalette(seed) {
+    // Palette and texture on independent cycles
+    let palIdx = seed % PALETTES.length;
+    let texIdx = Math.floor(seed / PALETTES.length) % TEXTURE_NAMES.length;
+    activePalette = PALETTES[palIdx];
+    activeTextureName = TEXTURE_NAMES[texIdx];
+
+    // Per-seed drift within family (subtle: +/-8 hue, +/-5 sat, +/-3 lum)
+    let tmpRng = seed;
+    function quickRng() { tmpRng = (tmpRng * 16807 + 0) % 2147483647; return tmpRng / 2147483647; }
+    let hDrift = (quickRng() - 0.5) * 16;
+    let sDrift = (quickRng() - 0.5) * 10;
+    let lDrift = (quickRng() - 0.5) * 6;
+
+    COLORS = activePalette.mascot.map(c => driftColor(c, hDrift, sDrift, lDrift));
+    BG_COLORS = activePalette.bg.map(c => driftColor(c, hDrift * 0.6, sDrift * 0.4, lDrift * 0.3));
+
+    // LP mode: use mascot colors for BG filaments so they're visible
+    if (IS_LP) {
+        BG_COLORS = [BG_COLORS[0], COLORS[1], COLORS[2]];
+    }
+
+    // Apply texture profile (decoupled from palette)
+    let tex = TEXTURES[activeTextureName] || TEXTURES.standard;
+    let bgTex = tex.bg;
+    let msTex = tex.ms;
+
+    // Per-seed jitter within texture (subtle, +/-10% of each param)
+    function jitter(base, range) { return base + (quickRng() - 0.5) * base * range; }
+
+    BG.speed = jitter(bgTex.speed, 0.15);
+    BG.sensorDist = Math.round(jitter(bgTex.sensorDist, 0.15));
+    BG.diffusion = Math.max(0.05, Math.min(0.50, jitter(bgTex.diffusion, 0.20)));
+    BG.deposit = Math.max(4, Math.round(jitter(bgTex.deposit, 0.15)));
+    BG.decay = Math.max(0.940, Math.min(0.990, jitter(bgTex.decay, 0.005)));
+    BG.turnSpeed = jitter(bgTex.turnSpeed, 0.15) * Math.PI / 180;
+    BG.trailBright = jitter(bgTex.trailBright, 0.10);
+    BG.foodCount = Math.round(jitter(bgTex.foodCount, 0.20));
+
+    MS.speed = jitter(msTex.speed, 0.15);
+    MS.sensorDist = Math.round(jitter(msTex.sensorDist, 0.15));
+    MS.diffusion = Math.max(0.05, Math.min(0.45, jitter(msTex.diffusion, 0.20)));
+    MS.deposit = Math.round(jitter(msTex.deposit, 0.15));
+    MS.decay = Math.max(0.945, Math.min(0.990, jitter(msTex.decay, 0.005)));
+    MS.turnSpeed = jitter(msTex.turnSpeed, 0.15) * Math.PI / 180;
+    MS.trailBright = jitter(msTex.trailBright, 0.10);
+    MS.densityMult = msTex.densityMult !== undefined ? msTex.densityMult : 1.0;
+    MS.trailMax = msTex.trailMax || 180; // Global cap prevents mascot blowout
+
+    // Re-apply mobile caps after texture override
+    if (IS_MOBILE) {
+        BG.agentCount = Math.min(BG.agentCount, 5500);
+        MS.agentCount = Math.min(MS.agentCount, 4000);
+        BG.stepsPerFrame = Math.min(BG.stepsPerFrame, 4);
+        MS.stepsPerFrame = Math.min(MS.stepsPerFrame, 4);
+        BG.spawnRate = Math.min(BG.spawnRate, 100);
+        MS.spawnRate = Math.min(MS.spawnRate, 50);
+    }
+
+    // Update chromatic aberration CSS to match palette
+    let warm = activePalette.chromatic[0];
+    let cool = activePalette.chromatic[1];
+    let mascotEl = document.getElementById('mascot-layer');
+    let bgEl = document.getElementById('bg');
+
+    let mascotAnim;
+    if (IS_MOBILE) {
+        // Lighter chromatic for mobile — smaller offsets, slightly higher alpha for presence
+        mascotAnim = `
+        @keyframes chromatic-orbit-mobile {
+            0%   { filter: drop-shadow(3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(-3px 0 2px ${cool.replace('A','0.20')}); }
+            25%  { filter: drop-shadow(0 3px 2px ${warm.replace('A','0.20')}) drop-shadow(0 -3px 2px ${cool.replace('A','0.20')}); }
+            50%  { filter: drop-shadow(-3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(3px 0 2px ${cool.replace('A','0.20')}); }
+            75%  { filter: drop-shadow(0 -3px 2px ${warm.replace('A','0.20')}) drop-shadow(0 3px 2px ${cool.replace('A','0.20')}); }
+            100% { filter: drop-shadow(3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(-3px 0 2px ${cool.replace('A','0.20')}); }
+        }`;
+    } else {
+        mascotAnim = `
+        @keyframes chromatic-orbit {
+            0%   { filter: drop-shadow(5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(-5px 0 3px ${cool.replace('A','0.30')}); }
+            25%  { filter: drop-shadow(0 5px 3px ${warm.replace('A','0.30')}) drop-shadow(0 -5px 3px ${cool.replace('A','0.30')}); }
+            50%  { filter: drop-shadow(-5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(5px 0 3px ${cool.replace('A','0.30')}); }
+            75%  { filter: drop-shadow(0 -5px 3px ${warm.replace('A','0.30')}) drop-shadow(0 5px 3px ${cool.replace('A','0.30')}); }
+            100% { filter: drop-shadow(5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(-5px 0 3px ${cool.replace('A','0.30')}); }
+        }
+        @keyframes bg-chromatic {
+            0%   { filter: drop-shadow(3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(-3px 0 1px ${cool.replace('A','0.08')}); }
+            50%  { filter: drop-shadow(-3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(3px 0 1px ${cool.replace('A','0.08')}); }
+            100% { filter: drop-shadow(3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(-3px 0 1px ${cool.replace('A','0.08')}); }
+        }`;
+    }
+
+    // Inject updated keyframes
+    let styleId = 'dynamic-chromatic';
+    let existing = document.getElementById(styleId);
+    if (existing) existing.remove();
+    let style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = mascotAnim;
+    document.head.appendChild(style);
+
+    // Re-trigger animations — entrance class handles steady-state animations
+    bgEl.style.animation = 'none';
+    void bgEl.offsetHeight;
+    if (mascotEl.classList.contains('entered')) {
+        mascotEl.classList.remove('entered');
+        void mascotEl.offsetHeight;
+        mascotEl.classList.add('entered');
+    }
+    if (!IS_MOBILE) {
+        bgEl.style.animation = 'bg-chromatic 14s linear infinite';
+    }
+}
+
+// Background sim params — radiating network from mascot, lively movement
+const BG = {
+    agentCount: 8000,
+    speed: 7.5,
+    sensorDist: 22,
+    sensorAngle: 40 * Math.PI / 180,
+    turnSpeed: 26 * Math.PI / 180,
+    deposit: 11,
+    decay: 0.938,
+    diffusion: 0.17,
+    trailBright: 1.3,
+    agentGlow: 0.18,
+    spawnR: 15,
+    stepsPerFrame: 5,
+    spawnRate: 140,
+    initialBatch: 3000,
+    foodCount: 16,
+    foodStr: 15,
+};
+
+// Mascot sim params — alive and breathing, not static
+const MS = {
+    agentCount: 5500,
+    speed: 4.8,
+    sensorDist: 16,
+    sensorAngle: 35 * Math.PI / 180,
+    turnSpeed: 24 * Math.PI / 180,
+    deposit: 11,
+    decay: 0.968,
+    diffusion: 0.24,
+    trailBright: 2.4,
+    agentGlow: 0.5,
+    spawnR: 10,
+    stepsPerFrame: 5,
+    spawnRate: 70,
+    initialBatch: 1400,
+};
+
+// Read params from URL if present
+let _urlParams = new URLSearchParams(window.location.search);
+let seed = _urlParams.get('seed') ? parseInt(_urlParams.get('seed')) || 1 : Math.floor(Math.random() * 999999) + 1;
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+
+// Canvases
+const bgCanvas = document.getElementById('bg');
+const bgSimCanvas = document.getElementById('bg-sim');
+const ghostCanvas = document.getElementById('ghost-layer');
+const resurfaceCanvas = document.getElementById('resurface-layer');
+const mascotCanvas = document.getElementById('mascot-layer');
+const mascotSimCanvas = document.getElementById('mascot-sim');
+const maskCanvasEl = document.getElementById('mask-canvas');
+const compositeCanvas = document.getElementById('composite');
+
+const bgCtx = bgCanvas.getContext('2d');
+const bgSimCtx = bgSimCanvas.getContext('2d');
+const ghostCtx = ghostCanvas.getContext('2d');
+const mascotCtx = mascotCanvas.getContext('2d');
+const mascotSimCtx = mascotSimCanvas.getContext('2d');
+const maskCtx = maskCanvasEl.getContext('2d');
+const compCtx = compositeCanvas.getContext('2d');
+
+// Viewport dimensions
+let VW, VH;
+// Mascot square size
+let MSIZE = 400;
+
+// Simulation state for background
+let bgAgents = [], bgTrail, bgTrailPrev, bgFoods = [];
+let bgCx, bgCy, bgFc = 0;
+
+// Simulation state for mascot
+let msAgents = [], msTrail, msTrailPrev, msFoods = [];
+let msCx, msCy, msFc = 0;
+
+let maskImg = null;
+let featheredMask = null; // Blurred-edge version of mask for soft bleed
+let densityMap = null;    // Luminance/edge map from mascot — guides trail deposit
+let edgeDistMap = null;   // 0 at mask edges, 1 deep inside — fades deposit near boundaries
+let edgeFoods = [];       // Food sources placed at high-contrast edges
+let stencilGrid = null;   // Per-ASCII-cell {lum, alpha, reveal} from mascot image
+let running = false;
+
+// ── Mobile detection & performance scaling ──
+const IS_MOBILE = /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent)
+    || (window.innerWidth <= 768 && 'ontouchstart' in window);
+const IS_LP = true;  // Landing page — always active
+const PERF_SCALE = IS_MOBILE ? 0.5 : 1.0;  // halve everything on mobile
+
+if (IS_LP) {
+    // Full BG agents for rich mycelial network, lean mascot to save CPU
+    // BG unchanged (8000 agents, full speed)
+    MS.agentCount = Math.round(MS.agentCount * 0.40);
+    MS.stepsPerFrame = Math.max(2, Math.round(MS.stepsPerFrame * 0.50));
+    MS.spawnRate = Math.round(MS.spawnRate * 0.40);
+    MS.initialBatch = Math.round(MS.initialBatch * 0.40);
+    // Big initial batch so filaments appear fast
+    BG.initialBatch = BG.agentCount;
+    BG.spawnRate = Math.round(BG.spawnRate * 1.5);
+    // BG filaments need to pop
+    BG.trailBright *= 2.2;
+    MS.trailBright *= 1.4;
+    // Start in blast — dramatic reveal on load
+    window._stencilMaster = 3.0;
+    window._trailBoost = 4.0;
+    window._lpBlastStart = true;
+} else if (IS_MOBILE) {
+    // ~70% of desktop agent populations — full res canvas needs more agents
+    BG.agentCount = Math.round(BG.agentCount * 0.70);
+    MS.agentCount = Math.round(MS.agentCount * 0.70);
+    // Fewer sim steps per frame (65% of desktop, min 3)
+    BG.stepsPerFrame = Math.max(3, Math.round(BG.stepsPerFrame * 0.65));
+    MS.stepsPerFrame = Math.max(3, Math.round(MS.stepsPerFrame * 0.65));
+    // Slower spawn (less GC pressure)
+    BG.spawnRate = Math.round(BG.spawnRate * 0.70);
+    MS.spawnRate = Math.round(MS.spawnRate * 0.70);
+    BG.initialBatch = Math.round(BG.initialBatch * 0.70);
+    MS.initialBatch = Math.round(MS.initialBatch * 0.70);
+    // Compensate for fewer agents
+    BG.trailBright *= 1.3;
+    MS.trailBright *= 1.3;
+    // Higher default stencil opacity — desktop's 0.28 is invisible on mobile
+    window._stencilMaster = 0.7;
+}
+
+// Seeded PRNG
+let rngState;
+function srng(s) { rngState = s | 0; }
+function rng() {
+    rngState = (rngState + 0x6D2B79F5) | 0;
+    let t = Math.imul(rngState ^ (rngState >>> 15), 1 | rngState);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+function h2r(hex) {
+    let r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? { r: parseInt(r[1], 16), g: parseInt(r[2], 16), b: parseInt(r[3], 16) } : { r: 100, g: 80, b: 30 };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MASCOT MASK
+// ═══════════════════════════════════════════════════════════════
+
+function loadMascot() {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => { maskImg = img; resolve(); };
+        img.onerror = () => { statusEl.textContent = 'Could not load shumi.webp'; resolve(); };
+        img.src = 'shumi.webp';
+    });
+}
+
+function buildMask() {
+    maskCanvasEl.width = MSIZE;
+    maskCanvasEl.height = MSIZE;
+    maskCtx.clearRect(0, 0, MSIZE, MSIZE);
+    const s = MSIZE * 0.7;
+    const mx = (MSIZE - s) / 2;
+    const my = (MSIZE - s) / 2;
+    maskCtx.drawImage(maskImg, mx, my, s, s);
+
+    // Feathered mask — wide blur for gradual edge dissolution
+    featheredMask = document.createElement('canvas');
+    featheredMask.width = MSIZE;
+    featheredMask.height = MSIZE;
+    let fCtx = featheredMask.getContext('2d');
+    fCtx.filter = 'blur(14px)';
+    fCtx.drawImage(maskCanvasEl, 0, 0);
+    fCtx.filter = 'none';
+
+    // Edge distance map — 0 at edges, 1 deep inside. Used to fade deposit near boundaries.
+    let maskData = maskCtx.getImageData(0, 0, MSIZE, MSIZE).data;
+    edgeDistMap = new Float32Array(MSIZE * MSIZE);
+    // First pass: binary mask
+    let binary = new Uint8Array(MSIZE * MSIZE);
+    for (let i = 0; i < MSIZE * MSIZE; i++) binary[i] = maskData[i * 4 + 3] > 30 ? 1 : 0;
+    // Distance transform (approximate via iterative erosion layers)
+    let dist = new Float32Array(MSIZE * MSIZE);
+    for (let i = 0; i < MSIZE * MSIZE; i++) dist[i] = binary[i] ? 999 : 0;
+    // Forward pass
+    for (let y = 1; y < MSIZE - 1; y++) {
+        for (let x = 1; x < MSIZE - 1; x++) {
+            let i = y * MSIZE + x;
+            if (dist[i] > 0) dist[i] = Math.min(dist[i], Math.min(dist[i-1], dist[i-MSIZE]) + 1);
+        }
+    }
+    // Backward pass
+    for (let y = MSIZE - 2; y > 0; y--) {
+        for (let x = MSIZE - 2; x > 0; x--) {
+            let i = y * MSIZE + x;
+            if (dist[i] > 0) dist[i] = Math.min(dist[i], Math.min(dist[i+1], dist[i+MSIZE]) + 1);
+        }
+    }
+    // Normalize with per-pixel noise so dissolution is ragged, not uniform
+    let edgeFadeDepth = window._edgeFadeDepth ?? 30;
+    // Low-frequency noise: sample every 8px, interpolate between
+    let noiseGrid = 8;
+    let nw = Math.ceil(MSIZE / noiseGrid) + 1;
+    let nh = Math.ceil(MSIZE / noiseGrid) + 1;
+    let noise = new Float32Array(nw * nh);
+    for (let i = 0; i < noise.length; i++) noise[i] = rng() * 0.6 + 0.7; // 0.7 to 1.3
+    for (let y = 0; y < MSIZE; y++) {
+        for (let x = 0; x < MSIZE; x++) {
+            let i = y * MSIZE + x;
+            // Bilinear noise lookup
+            let gx = x / noiseGrid, gy = y / noiseGrid;
+            let gx0 = Math.floor(gx), gy0 = Math.floor(gy);
+            let fx = gx - gx0, fy = gy - gy0;
+            let gx1 = Math.min(gx0 + 1, nw - 1), gy1 = Math.min(gy0 + 1, nh - 1);
+            let n = noise[gy0 * nw + gx0] * (1-fx)*(1-fy) + noise[gy0 * nw + gx1] * fx*(1-fy)
+                  + noise[gy1 * nw + gx0] * (1-fx)*fy + noise[gy1 * nw + gx1] * fx*fy;
+            edgeDistMap[i] = Math.min(1, (dist[i] * n) / edgeFadeDepth);
+        }
+    }
+
+    // ── Build density map from mascot image ──
+    // Combines edge detection + luminance contrast to create a guide field
+    let imgData = maskCtx.getImageData(0, 0, MSIZE, MSIZE);
+    let px = imgData.data;
+    densityMap = new Float32Array(MSIZE * MSIZE);
+    edgeFoods = [];
+
+    // Pass 1: luminance
+    let lum = new Float32Array(MSIZE * MSIZE);
+    for (let i = 0; i < MSIZE * MSIZE; i++) {
+        let r = px[i*4], g = px[i*4+1], b = px[i*4+2], a = px[i*4+3];
+        lum[i] = a > 10 ? (r * 0.299 + g * 0.587 + b * 0.114) / 255 : 0;
+    }
+
+    // Pass 2: Sobel edge detection + luminance variance = density
+    for (let y = 1; y < MSIZE - 1; y++) {
+        for (let x = 1; x < MSIZE - 1; x++) {
+            let idx = y * MSIZE + x;
+            // Sobel gradient magnitude
+            let gx = -lum[idx - MSIZE - 1] + lum[idx - MSIZE + 1]
+                     -2*lum[idx - 1]        + 2*lum[idx + 1]
+                     -lum[idx + MSIZE - 1]  + lum[idx + MSIZE + 1];
+            let gy = -lum[idx - MSIZE - 1] - 2*lum[idx - MSIZE] - lum[idx - MSIZE + 1]
+                     +lum[idx + MSIZE - 1]  + 2*lum[idx + MSIZE] + lum[idx + MSIZE + 1];
+            let edge = Math.sqrt(gx * gx + gy * gy);
+
+            // Density = edge strength (structural features) + base luminance
+            densityMap[idx] = Math.min(1, edge * 3 + lum[idx] * 0.15);
+        }
+    }
+
+    // Pass 3: find high-edge points as structural food sources
+    // (eyes, cap outline, face border, stem edges)
+    let candidates = [];
+    for (let y = 4; y < MSIZE - 4; y += 3) {
+        for (let x = 4; x < MSIZE - 4; x += 3) {
+            let d = densityMap[y * MSIZE + x];
+            if (d > 0.4) candidates.push({ x, y, d });
+        }
+    }
+    // Sort by density, pick top N spread across the shape
+    candidates.sort((a, b) => b.d - a.d);
+    // Spatial filtering — don't cluster foods too close
+    let minDist = MSIZE * 0.06;
+    for (let c of candidates) {
+        if (edgeFoods.length >= 30) break;
+        let tooClose = false;
+        for (let f of edgeFoods) {
+            let dx = f.x - c.x, dy = f.y - c.y;
+            if (Math.sqrt(dx*dx + dy*dy) < minDist) { tooClose = true; break; }
+        }
+        if (!tooClose) edgeFoods.push({ x: c.x, y: c.y, r: 100 });
+    }
+
+    // ── Build ASCII stencil grid from mascot image ──
+    // Each cell stores luminance, alpha, edge strength, and a random reveal threshold
+    let sCols = Math.floor(MSIZE / CELL_W);
+    let sRows = Math.floor(MSIZE / CELL_H);
+    stencilGrid = new Array(sCols * sRows);
+    let imgPx = maskCtx.getImageData(0, 0, MSIZE, MSIZE).data;
+    for (let row = 0; row < sRows; row++) {
+        let sy = row * CELL_H + Math.floor(CELL_H / 2);
+        for (let col = 0; col < sCols; col++) {
+            let sx = col * CELL_W + Math.floor(CELL_W / 2);
+            let si = (sy * MSIZE + sx) * 4;
+            let r = imgPx[si], g = imgPx[si+1], b = imgPx[si+2], a = imgPx[si+3];
+            let lumVal = a > 10 ? (r * 0.299 + g * 0.587 + b * 0.114) / 255 : 0;
+            // Sample edge strength from density map (Sobel edges + luminance)
+            let edgeVal = densityMap ? densityMap[sy * MSIZE + sx] : 0;
+            // Also sample a small neighborhood for more robust edge detection per cell
+            let edgeMax = edgeVal;
+            for (let dy = -2; dy <= 2; dy++) {
+                for (let dx = -2; dx <= 2; dx++) {
+                    let ny = sy + dy * 2, nx = sx + dx * 2;
+                    if (ny >= 0 && ny < MSIZE && nx >= 0 && nx < MSIZE && densityMap) {
+                        edgeMax = Math.max(edgeMax, densityMap[ny * MSIZE + nx]);
+                    }
+                }
+            }
+            let reveal = a > 10 ? (1 - edgeVal * 0.6) * (0.3 + rng() * 0.7) : 2; // >1 = never
+            stencilGrid[row * sCols + col] = { lum: lumVal, a: a / 255, reveal, r, g, b, edge: edgeMax };
+        }
+    }
+
+    // ── Build ghost afterimage — extreme shading of original mascot ──
+    // Barely perceptible color, acts as burned retina impression under trails
+    buildGhost();
+}
+
+function buildGhost() {
+    ghostCanvas.width = MSIZE; ghostCanvas.height = MSIZE;
+    let gCtx = ghostCanvas.getContext('2d');
+    gCtx.clearRect(0, 0, MSIZE, MSIZE);
+
+    // Draw original mascot art at full color
+    const s = MSIZE * 0.7;
+    const mx = (MSIZE - s) / 2;
+    const my = (MSIZE - s) / 2;
+    gCtx.drawImage(maskImg, mx, my, s, s);
+
+    // Crush color: multiply with near-black to leave only the faintest ghost
+    // Two passes — first a heavy multiply, then an opacity overlay to push it further down
+    gCtx.globalCompositeOperation = 'multiply';
+    gCtx.fillStyle = '#1a1a1a';
+    gCtx.fillRect(0, 0, MSIZE, MSIZE);
+    gCtx.globalCompositeOperation = 'multiply';
+    gCtx.fillStyle = '#2a2a2a';
+    gCtx.fillRect(0, 0, MSIZE, MSIZE);
+
+    // Feather edges with the same mask so ghost doesn't have hard silhouette
+    gCtx.globalCompositeOperation = 'destination-in';
+    gCtx.drawImage(featheredMask, 0, 0);
+    gCtx.globalCompositeOperation = 'source-over';
+
+    // Show ghost immediately, will be faded out in frame loop
+    ghostCanvas.classList.add('visible');
+    ghostFadeStart = -1; // reset fade timer
+
+    // Build resurface layer — full-color mascot art, feather-masked
+    resurfaceCanvas.width = MSIZE; resurfaceCanvas.height = MSIZE;
+    let rCtx = resurfaceCanvas.getContext('2d');
+    rCtx.clearRect(0, 0, MSIZE, MSIZE);
+    rCtx.drawImage(maskImg, mx, my, s, s);
+    if (featheredMask) {
+        rCtx.globalCompositeOperation = 'destination-in';
+        rCtx.drawImage(featheredMask, 0, 0);
+        rCtx.globalCompositeOperation = 'source-over';
+    }
+}
+
+// Ghost fade state
+let ghostFadeStart = -1;
+const GHOST_HOLD_FRAMES = 90;       // frames to hold full ghost before fading
+const GHOST_FADE_FRAMES = 180;      // frames to fade ghost to zero
+
+// Persistent resurface — retinal burn base layer
+const RESURFACE_EARLY_PEAK = 0.28;  // visible but not overpowering
+const RESURFACE_FLOOR = 0.06;       // subtle persistent base
+const RESURFACE_FADE_UP = 90;       // frames to reach peak (~1.5s)
+const RESURFACE_SETTLE_START = 360; // frames before settling down (~6s)
+const RESURFACE_SETTLE_DUR = 600;   // frames to settle to floor (~10s)
+
+function getMaskFoodPoints(count) {
+    let points = [];
+    let data = maskCtx.getImageData(0, 0, MSIZE, MSIZE).data;
+    let opaque = [];
+    for (let y = 0; y < MSIZE; y += 3) {
+        for (let x = 0; x < MSIZE; x += 3) {
+            if (data[(y * MSIZE + x) * 4 + 3] > 128) opaque.push({ x, y });
+        }
+    }
+    for (let i = 0; i < count && opaque.length > 0; i++) {
+        points.push(opaque[Math.floor(rng() * opaque.length)]);
+    }
+    return points;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GENERIC PHYSARUM ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+function sampleT(trail, w, h, x, y) {
+    let ix = Math.floor(x), iy = Math.floor(y);
+    if (ix < 0 || ix >= w || iy < 0 || iy >= h) return 0;
+    return trail[iy * w + ix];
+}
+
+class Agent {
+    constructor(x, y, h) { this.x = x; this.y = y; this.h = h; }
+
+    step(P, trail, foods, w, h, dmap, edmap) {
+        let sL = this.sense(P, trail, w, h, -P.sensorAngle);
+        let sC = this.sense(P, trail, w, h, 0);
+        let sR = this.sense(P, trail, w, h, P.sensorAngle);
+
+        // Density-guided steering: sense density at left/center/right and bias toward structure
+        if (dmap) {
+            let sd = P.sensorDist;
+            let dL = sampleT(dmap, w, h, this.x + Math.cos(this.h - P.sensorAngle) * sd, this.y + Math.sin(this.h - P.sensorAngle) * sd);
+            let dC = sampleT(dmap, w, h, this.x + Math.cos(this.h) * sd, this.y + Math.sin(this.h) * sd);
+            let dR = sampleT(dmap, w, h, this.x + Math.cos(this.h + P.sensorAngle) * sd, this.y + Math.sin(this.h + P.sensorAngle) * sd);
+            // Blend density signal into trail sensor readings
+            sL += dL * 40;
+            sC += dC * 40;
+            sR += dR * 40;
+        }
+
+        // Food attraction
+        if (foods && foods.length > 0) {
+            let bd = Infinity, ba = 0;
+            for (let f of foods) {
+                let dx = f.x - this.x, dy = f.y - this.y;
+                let d = Math.sqrt(dx * dx + dy * dy);
+                if (d < (f.r || 150) && d < bd) { bd = d; ba = Math.atan2(dy, dx); }
+            }
+            if (bd < 150 && bd > 3) {
+                let diff = ba - this.h;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                this.h += diff * Math.pow(1 - bd / 150, 2) * 0.12;
+            }
+        }
+
+        if (sC > sL && sC > sR) { /* straight */ }
+        else if (sC < sL && sC < sR) { this.h += (rng() < 0.5 ? P.turnSpeed : -P.turnSpeed); }
+        else if (sL > sR) { this.h -= P.turnSpeed; }
+        else if (sR > sL) { this.h += P.turnSpeed; }
+
+        this.x += Math.cos(this.h) * P.speed;
+        this.y += Math.sin(this.h) * P.speed;
+
+        // Wrap
+        if (this.x < 0) this.x += w; if (this.x >= w) this.x -= w;
+        if (this.y < 0) this.y += h; if (this.y >= h) this.y -= h;
+
+        let ix = Math.floor(this.x), iy = Math.floor(this.y);
+        if (ix >= 0 && ix < w && iy >= 0 && iy < h) {
+            // Density-guided deposit: more trail at structural features
+            let dep = P.deposit;
+            if (dmap) {
+                let d = dmap[iy * w + ix] || 0;
+                let dm = P.densityMult !== undefined ? P.densityMult : 1.0;
+                dep = P.deposit * (0.5 + d * 2.5 * dm);
+            }
+            // Edge dissolution: fade deposit near mask boundaries
+            if (edmap) {
+                let ef = edmap[iy * w + ix] || 0;
+                dep *= 0.15 + ef * 0.85; // 15% deposit at very edge, full at center
+            }
+            let tmax = P.trailMax || 255;
+            trail[iy * w + ix] = Math.min(trail[iy * w + ix] + dep, tmax);
+        }
+    }
+
+    sense(P, trail, w, h, offset) {
+        let a = this.h + offset;
+        return sampleT(trail, w, h, this.x + Math.cos(a) * P.sensorDist, this.y + Math.sin(a) * P.sensorDist);
+    }
+}
+
+function diffuse(trail, trailPrev, w, h, diffusion, decay) {
+    let tmp = trailPrev; trailPrev = trail; trail = tmp;
+    let id = 1 - diffusion;
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            let idx = y * w + x;
+            let avg = (trailPrev[idx - 1] + trailPrev[idx + 1] + trailPrev[idx - w] + trailPrev[idx + w]) * 0.25;
+            trail[idx] = (trailPrev[idx] * id + avg * diffusion) * decay;
+        }
+    }
+    return { trail, trailPrev };
+}
+
+function spawnAgent(agents, cx, cy, spawnR) {
+    let a = rng() * Math.PI * 2;
+    let r = rng() * spawnR;
+    agents.push(new Agent(cx + Math.cos(a) * r, cy + Math.sin(a) * r, a));
+}
+
+function seedTrail(trail, cx, cy, w, h, spawnR) {
+    for (let dy = -spawnR; dy <= spawnR; dy++) {
+        for (let dx = -spawnR; dx <= spawnR; dx++) {
+            let dd = Math.sqrt(dx * dx + dy * dy);
+            if (dd < spawnR) {
+                let ix = Math.floor(cx + dx), iy = Math.floor(cy + dy);
+                if (ix >= 0 && ix < w && iy >= 0 && iy < h) {
+                    trail[iy * w + ix] = (1 - dd / spawnR) * 40;
+                }
+            }
+        }
+    }
+}
+
+function renderTrail(ctx, trail, w, h, P, colors, lumBuffer) {
+    colors = colors || COLORS;
+    let base = h2r(colors[0]), bright = h2r(colors[1]), hot = h2r(colors[2]);
+
+    // Clear to background color
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(0, 0, w, h);
+
+    let cellW = CELL_W;
+    let cellH = CELL_H;
+    let cols = Math.floor(w / cellW);
+    let rows = Math.floor(h / cellH);
+    let fontSize = cellH - 2;
+    ctx.font = `${fontSize}px 'Courier New'`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+
+    // Pulse factor: sine wave oscillation for brightness + ramp shift
+    let pulse = Math.sin(pulsePhase);
+    let brightMult = 1 + pulse * PULSE_BRIGHT;
+    let rampShift = pulse * PULSE_RAMP;
+
+    // Luminance damping: smooth out per-cell brightness over time
+    let useDamping = lumBuffer && lumBuffer.length >= cols * rows;
+    let dampRate = LUM_DAMP_RATE;
+
+    for (let row = 0; row < rows; row++) {
+        let py = row * cellH + Math.floor(cellH / 2);
+        for (let col = 0; col < cols; col++) {
+            let px = col * cellW + Math.floor(cellW / 2);
+            if (py >= h || px >= w) continue;
+            let vRaw = trail[py * w + px] * P.trailBright;
+
+            // Low-pass damping: smoothly track target brightness
+            let cellIdx = row * cols + col;
+            let v;
+            if (useDamping) {
+                let target = vRaw;
+                let current = lumBuffer[cellIdx];
+                // Exponential smoothing toward target
+                current += (target - current) * dampRate;
+                lumBuffer[cellIdx] = current;
+                v = current;
+            } else {
+                v = vRaw;
+            }
+
+            // Skip empty cells
+            if (v < 1) continue;
+
+            // Pulsed brightness for color interpolation
+            let vPulsed = v * brightMult;
+
+            // Character from code buffer (tiled across grid), not density ramp
+            let ch = CODE_BUF[(row * cols + col) % CODE_LEN];
+            if (ch === ' ') ch = CODE_BUF[(row * cols + col + 7) % CODE_LEN];
+
+            // Opacity: cubic ease so faint trails are very subtle, only hot trails pop
+            let rawAlpha = Math.min(1, v / 50);
+            let alpha = rawAlpha * rawAlpha * rawAlpha; // cubic falloff
+
+            // 3-stop color interpolation, scaled for lower trail values
+            let t = Math.min(vPulsed / 30, 1);
+            let t2 = Math.min(vPulsed / 80, 1);
+            let r, g, b;
+            if (t2 > 0.3) {
+                let ht = (t2 - 0.3) / 0.7;
+                r = bright.r + (hot.r - bright.r) * ht;
+                g = bright.g + (hot.g - bright.g) * ht;
+                b = bright.b + (hot.b - bright.b) * ht;
+            } else {
+                r = base.r + (bright.r - base.r) * t;
+                g = base.g + (bright.g - base.g) * t;
+                b = base.b + (bright.b - base.b) * t;
+            }
+
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = `rgb(${Math.min(255,r)|0},${Math.min(255,g)|0},${Math.min(255,b)|0})`;
+            ctx.fillText(ch, col * cellW + Math.floor(cellW / 2), row * cellH);
+        }
+    }
+    ctx.globalAlpha = 1;
+}
+
+// ── Parallax Layer 1: Substrate ──
+// Dim, massive characters at 0.5x scroll speed — "Raw Data Ocean"
+function renderSubstrate(ctx, trail, w, h, P, colors) {
+    if (!PARALLAX_ENABLED || IS_MOBILE) return; // skip on mobile for perf
+    let base = h2r(colors[0]), bright = h2r(colors[1]);
+    let scale = LAYER1_CELL_SCALE;
+    let cellW = Math.floor(CELL_W * scale);
+    let cellH = Math.floor(CELL_H * scale);
+    let cols = Math.floor(w / cellW);
+    let rows = Math.floor(h / cellH);
+    let fontSize = cellH - 2;
+    ctx.font = `bold ${fontSize}px 'Courier New'`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+
+    // Slow scroll offset — 0.5x of main pulse phase creates depth parallax
+    let scrollOff = Math.floor(bgFc * LAYER1_SPEED * 0.05);
+    let pulse = Math.sin(pulsePhase * LAYER1_SPEED);
+    let brightMult = 1 + pulse * 0.1; // subtler pulse for substrate
+
+    for (let row = 0; row < rows; row++) {
+        // Sample trail from the center of the substrate cell
+        let py = row * cellH + Math.floor(cellH / 2);
+        for (let col = 0; col < cols; col++) {
+            let px = col * cellW + Math.floor(cellW / 2);
+            if (py >= h || px >= w) continue;
+            let v = trail[py * w + px] * P.trailBright;
+            if (v < 3) continue; // higher threshold — only show where there's real signal
+
+            let vPulsed = v * brightMult;
+            // Use high-signal characters for substrate
+            let chIdx = ((row + scrollOff) * cols + col) % HIGHSIG_LEN;
+            let ch = HIGHSIG_BUF[chIdx];
+
+            // Very dim opacity — these are the deep background
+            let rawAlpha = Math.min(1, v / 80);
+            let alpha = rawAlpha * rawAlpha * LAYER1_ALPHA;
+            if (alpha < 0.005) continue;
+
+            // Muted color — mostly base, slight bright tint
+            let t = Math.min(vPulsed / 60, 1);
+            let r = base.r + (bright.r - base.r) * t * 0.4;
+            let g = base.g + (bright.g - base.g) * t * 0.4;
+            let b = base.b + (bright.b - base.b) * t * 0.4;
+
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = `rgb(${Math.min(255,r)|0},${Math.min(255,g)|0},${Math.min(255,b)|0})`;
+            ctx.fillText(ch, col * cellW + Math.floor(cellW / 2), row * cellH);
+        }
+    }
+    ctx.globalAlpha = 1;
+}
+
+// ── Parallax Layer 3: Interface Border ──
+// Sharp, high-contrast chars that appear only inside the text repulsion zone perimeter
+// Creates a glowing structural frame around the mascot area
+function renderInterfaceBorder(ctx, trail, w, h, P, colors, cx, cy, innerR, outerR) {
+    if (!PARALLAX_ENABLED || IS_MOBILE) return;
+    let bright = h2r(colors[1]), hot = h2r(colors[2]);
+    let cellW = CELL_W;
+    let cellH = CELL_H;
+    let cols = Math.floor(w / cellW);
+    let rows = Math.floor(h / cellH);
+    let fontSize = cellH - 2;
+    ctx.font = `bold ${fontSize}px 'Courier New'`;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'center';
+
+    let pulse = Math.sin(pulsePhase);
+    let brightMult = 1 + pulse * 0.15;
+
+    for (let row = 0; row < rows; row++) {
+        let py = row * cellH + Math.floor(cellH / 2);
+        for (let col = 0; col < cols; col++) {
+            let px = col * cellW + Math.floor(cellW / 2);
+            if (py >= h || px >= w) continue;
+
+            // Distance from mascot center
+            let dx = px - cx, dy = py - cy;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Only render in the annular zone between innerR and outerR
+            if (dist < innerR || dist > outerR) continue;
+
+            let v = trail[py * w + px] * P.trailBright;
+            if (v < 2) continue;
+
+            // Ring falloff: brightest at innerR, fading toward outerR
+            let ringT = 1 - (dist - innerR) / (outerR - innerR);
+            ringT = ringT * ringT; // quadratic falloff toward outer edge
+
+            let ch = HIGHSIG_BUF[(row * cols + col) % HIGHSIG_LEN];
+
+            let rawAlpha = Math.min(1, v / 40);
+            let alpha = rawAlpha * ringT * LAYER3_ALPHA;
+            if (alpha < 0.01) continue;
+
+            let vPulsed = v * brightMult;
+            let t = Math.min(vPulsed / 50, 1);
+            let r = bright.r + (hot.r - bright.r) * t * 0.6;
+            let g = bright.g + (hot.g - bright.g) * t * 0.6;
+            let b = bright.b + (hot.b - bright.b) * t * 0.6;
+
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = `rgb(${Math.min(255,r)|0},${Math.min(255,g)|0},${Math.min(255,b)|0})`;
+            ctx.fillText(ch, col * cellW + Math.floor(cellW / 2), row * cellH);
+        }
+    }
+    ctx.globalAlpha = 1;
+}
+
+// Pixel-based trail renderer — organic mold look, no ASCII characters
+function renderTrailPixel(ctx, trail, w, h, P, colors) {
+    let base = h2r(colors[0]), bright = h2r(colors[1]), hot = h2r(colors[2]);
+    let imgData = ctx.createImageData(w, h);
+    let px = imgData.data;
+    let pulse = Math.sin(pulsePhase);
+    let brightMult = 1 + pulse * PULSE_BRIGHT;
+
+    let boost = _trailBoost || 1.0;
+    for (let i = 0; i < w * h; i++) {
+        let v = trail[i] * P.trailBright * boost;
+        if (v < 0.5) {
+            // Background color
+            px[i*4] = base.r; px[i*4+1] = base.g; px[i*4+2] = base.b; px[i*4+3] = 255;
+            continue;
+        }
+        let vP = v * brightMult;
+        // Smooth alpha — quadratic for organic glow
+        let rawA = Math.min(1, v / 40);
+        let alpha = rawA * rawA;
+        // Edge mask: if provided, multiply alpha by edge strength
+        if (alpha < 0.01) {
+            px[i*4] = base.r; px[i*4+1] = base.g; px[i*4+2] = base.b; px[i*4+3] = 255;
+            continue;
+        }
+        // 3-stop color: base → bright → hot (hot only at high trail intensity)
+        let t1 = Math.min(vP / 30, 1);
+        let t2 = Math.min(vP / 80, 1);
+        let r, g, b;
+        if (t2 > 0.5) {
+            let ht = (t2 - 0.5) / 0.5;
+            r = bright.r + (hot.r - bright.r) * ht * 0.6;
+            g = bright.g + (hot.g - bright.g) * ht * 0.6;
+            b = bright.b + (hot.b - bright.b) * ht * 0.6;
+        } else {
+            r = base.r + (bright.r - base.r) * t1;
+            g = base.g + (bright.g - base.g) * t1;
+            b = base.b + (bright.b - base.b) * t1;
+        }
+        // Blend with background
+        px[i*4]   = (base.r * (1 - alpha) + r * alpha) | 0;
+        px[i*4+1] = (base.g * (1 - alpha) + g * alpha) | 0;
+        px[i*4+2] = (base.b * (1 - alpha) + b * alpha) | 0;
+        px[i*4+3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════
+
+function resize() {
+    let screenW = window.innerWidth;
+    let screenH = window.innerHeight;
+    // HiDPI: render mascot at native resolution for sharp trails on Retina displays
+    let dpr = Math.min(window.devicePixelRatio || 1, 2); // cap at 2x to avoid perf issues
+
+    // On mobile: render at full screen resolution for crisp output
+    if (IS_MOBILE) {
+        VW = screenW;
+        VH = screenH;
+        dpr = Math.min(window.devicePixelRatio || 1, 1.5); // mild HiDPI on mobile
+        // CSS stretches canvas to viewport
+        bgCanvas.style.width = screenW + 'px';
+        bgCanvas.style.height = screenH + 'px';
+        mascotCanvas.style.width = ''; // sized by CSS position
+        mascotCanvas.style.height = '';
+    } else {
+        VW = screenW;
+        VH = screenH;
+    }
+
+    MSIZE = Math.floor(Math.min(VW, VH) * 0.5);
+    // On mobile, mascot needs to be bigger for the stencil to read
+    if (IS_MOBILE) MSIZE = Math.max(MSIZE, Math.floor(Math.min(screenW, screenH) * 0.60));
+
+    bgCanvas.width = VW; bgCanvas.height = VH;
+    bgSimCanvas.width = VW; bgSimCanvas.height = VH;
+    compositeCanvas.width = VW; compositeCanvas.height = VH;
+
+    // Ghost afterimage layer — same logical size as mascot
+    ghostCanvas.width = MSIZE; ghostCanvas.height = MSIZE;
+    ghostCanvas.style.width = MSIZE + 'px';
+    ghostCanvas.style.height = MSIZE + 'px';
+
+    // Resurface layer — same size as ghost
+    resurfaceCanvas.width = MSIZE; resurfaceCanvas.height = MSIZE;
+    resurfaceCanvas.style.width = MSIZE + 'px';
+    resurfaceCanvas.style.height = MSIZE + 'px';
+
+    // Mascot display canvas: HiDPI-scaled for sharp trails on Retina displays
+    // Simulation stays at MSIZE; display canvas upscales for crispness
+    let mRender = Math.floor(MSIZE * dpr);
+    mascotCanvas.width = mRender; mascotCanvas.height = mRender;
+    mascotSimCanvas.width = MSIZE; mascotSimCanvas.height = MSIZE;
+    if (dpr > 1) {
+        mascotCanvas.style.width = MSIZE + 'px';
+        mascotCanvas.style.height = MSIZE + 'px';
+        // Scale the display canvas context so drawImage from sim upscales cleanly
+        mascotCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        mascotCtx.imageSmoothingEnabled = false;
+    }
+    window._mascotDPR = dpr;
+
+    // Scale mascot canvas display to correct screen position
+    if (IS_MOBILE) {
+        let displayMsize = Math.floor(Math.min(screenW, screenH) * 0.55);
+        mascotCanvas.style.width = displayMsize + 'px';
+        mascotCanvas.style.height = displayMsize + 'px';
+        // Ghost/resurface must match mascot display size so they overlap perfectly
+        ghostCanvas.style.width = displayMsize + 'px';
+        ghostCanvas.style.height = displayMsize + 'px';
+        resurfaceCanvas.style.width = displayMsize + 'px';
+        resurfaceCanvas.style.height = displayMsize + 'px';
+    }
+
+    if (maskImg && !USE_WORKER) buildMask();
+}
+
+function generateBgFoods() {
+    bgFoods = [];
+    let cx = VW / 2, cy = VH / 2;
+    let minR = MSIZE * 0.5;
+    let maxR = Math.max(VW, VH) * 0.55;
+    for (let i = 0; i < BG.foodCount; i++) {
+        let a = rng() * Math.PI * 2;
+        let r = minR + rng() * (maxR - minR);
+        bgFoods.push({
+            x: cx + Math.cos(a) * r,
+            y: cy + Math.sin(a) * r,
+            r: 100 + rng() * 140
+        });
+    }
+}
+
+function setMode(m) {
+    formationMode = m;
+    if (USE_WORKER && worker) worker.postMessage({ type: 'setMode', mode: m });
+}
+
+function syncSliders() {
+    // No UI sliders on landing page
+}
+
+function initAll() {
+    selectPalette(seed);
+    srng(seed);
+
+    // Reset ghost afterimage — bring it back for the new seed's entrance
+    ghostFadeStart = -1;
+    ghostCanvas.style.opacity = '1';
+    ghostCanvas.classList.add('visible');
+    if (maskImg) buildGhost();
+
+    // Shuffle code buffer with seeded RNG so each seed gets unique code layout
+    CODE_BUF = CODE_SRC.slice();
+    for (let i = CODE_LEN - 1; i > 0; i--) {
+        let j = Math.floor(rng() * (i + 1));
+        let tmp = CODE_BUF[i]; CODE_BUF[i] = CODE_BUF[j]; CODE_BUF[j] = tmp;
+    }
+    // Shuffle high-signal buffer independently
+    HIGHSIG_BUF = HIGHSIG_CHARS.slice();
+    for (let i = HIGHSIG_LEN - 1; i > 0; i--) {
+        let j = Math.floor(rng() * (i + 1));
+        let tmp = HIGHSIG_BUF[i]; HIGHSIG_BUF[i] = HIGHSIG_BUF[j]; HIGHSIG_BUF[j] = tmp;
+    }
+
+    // ── Background sim — network radiates from mascot ring to edges ──
+    bgCx = VW / 2;
+    bgCy = IS_LP ? VH * 0.35 : VH / 2;
+    bgFc = 0;
+    bgAgents = [];
+    bgTrail = new Float32Array(VW * VH);
+    bgTrailPrev = new Float32Array(VW * VH);
+    // Allocate luminance damping buffer for background
+    bgLumBuffer = new Float32Array(VW * VH);
+    generateBgFoods();
+    // Seed trail on the spawn ring and at food targets
+    let spawnRingR = MSIZE * 0.35;
+    for (let i = 0; i < 48; i++) {
+        let a = (i / 48) * Math.PI * 2;
+        seedTrail(bgTrail, bgCx + Math.cos(a) * spawnRingR, bgCy + Math.sin(a) * spawnRingR, VW, VH, 10);
+    }
+    for (let f of bgFoods) seedTrail(bgTrail, f.x, f.y, VW, VH, 8);
+    // Spawn agents on the ring, facing outward toward food sources
+    for (let i = 0; i < BG.initialBatch; i++) {
+        let a = rng() * Math.PI * 2;
+        let r = spawnRingR + (rng() - 0.5) * 20;
+        let sx = bgCx + Math.cos(a) * r;
+        let sy = bgCy + Math.sin(a) * r;
+        bgAgents.push(new Agent(sx, sy, a + (rng() - 0.5) * 0.8));
+    }
+    bgSimCtx.fillStyle = '#0D0D0D';
+    bgSimCtx.fillRect(0, 0, VW, VH);
+
+    // ── Mascot sim ──
+    msCx = MSIZE / 2;
+    msCy = MSIZE / 2;
+    msFc = 0;
+    msAgents = [];
+    msTrail = new Float32Array(MSIZE * MSIZE);
+    msTrailPrev = new Float32Array(MSIZE * MSIZE);
+    seedTrail(msTrail, msCx, msCy, MSIZE, MSIZE, MS.spawnR);
+    // Use edge-detected structural food sources instead of random
+    msFoods = edgeFoods.length > 0 ? edgeFoods : getMaskFoodPoints(25);
+    for (let f of msFoods) seedTrail(msTrail, f.x, f.y, MSIZE, MSIZE, 6);
+
+    // Pre-seed trail along density map so agents immediately follow structure
+    if (densityMap) {
+        for (let i = 0; i < MSIZE * MSIZE; i++) {
+            msTrail[i] += densityMap[i] * 15;
+        }
+    }
+    for (let i = 0; i < MS.initialBatch; i++) spawnAgent(msAgents, msCx, msCy, MS.spawnR);
+    mascotSimCtx.fillStyle = '#0D0D0D';
+    mascotSimCtx.fillRect(0, 0, MSIZE, MSIZE);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FRAME
+// ═══════════════════════════════════════════════════════════════
+
+function frame() {
+    if (!running) return;
+    bgFc++; msFc++;
+    pulsePhase += (window._pulseSpeed ?? PULSE_SPEED);
+
+    // LP blast fade-down: hold blast briefly then ease to normal
+    if (window._lpBlastStart) {
+        let LP_BLAST_HOLD = 60;   // hold full blast ~1s
+        let LP_BLAST_FADE = 150;  // fade over ~2.5s
+        let LP_TARGET_MASTER = 0.40;
+        let LP_TARGET_BOOST = 1.0;
+        if (msFc <= LP_BLAST_HOLD) {
+            // hold at blast
+        } else if (msFc <= LP_BLAST_HOLD + LP_BLAST_FADE) {
+            let t = (msFc - LP_BLAST_HOLD) / LP_BLAST_FADE;
+            let ease = t * t * (3 - 2 * t); // smoothstep
+            window._stencilMaster = 3.0 + (LP_TARGET_MASTER - 3.0) * ease;
+            _trailBoost = 4.0 + (LP_TARGET_BOOST - 4.0) * ease;
+        } else {
+            window._stencilMaster = LP_TARGET_MASTER;
+            _trailBoost = LP_TARGET_BOOST;
+            window._lpBlastStart = false; // done fading
+        }
+    }
+
+    // Shared formation factor: drives both trail inflow and mascot illumination
+    // On mobile, form stencil in ~8 frames instead of 18 (mobile fps is lower)
+    let stencilEnd = window._stencilEnd ?? (IS_MOBILE ? 45 : STENCIL_END);
+    let formationLinear = Math.min(1, Math.max(0, (msFc - STENCIL_START) / (stencilEnd - STENCIL_START)));
+    // Ease-in: starts ghostly, gradually solidifies
+    let formation = formationLinear * formationLinear;
+
+    // ── Background sim step — spawn from mascot ring, radiating outward ──
+    if (bgAgents.length < BG.agentCount) {
+        let n = Math.min(BG.spawnRate, BG.agentCount - bgAgents.length);
+        let ringR = MSIZE * 0.35;
+        for (let i = 0; i < n; i++) {
+            let a = rng() * Math.PI * 2;
+            let r = ringR + (rng() - 0.5) * 20;
+            bgAgents.push(new Agent(bgCx + Math.cos(a) * r, bgCy + Math.sin(a) * r, a + (rng() - 0.5) * 0.8));
+        }
+    }
+    for (let s = 0; s < BG.stepsPerFrame; s++) {
+        for (let a of bgAgents) a.step(BG, bgTrail, bgFoods, VW, VH);
+    }
+    let bgD = diffuse(bgTrail, bgTrailPrev, VW, VH, BG.diffusion, BG.decay);
+    bgTrail = bgD.trail; bgTrailPrev = bgD.trailPrev;
+
+    // ── Cradle Logic: "Boundary Hugger" ──
+    // Instead of simply suppressing trails under the mascot, we redistribute
+    // trail energy to the perimeter, creating a glowing "cradle" that physically
+    // frames the mascot with high-density characters.
+    let fadeR = MSIZE * 0.22;
+    let fadeR2 = fadeR * fadeR;
+    let cradleR = fadeR * 1.15;      // slightly outside suppression = cradle ring
+    let cradleR2 = cradleR * cradleR;
+    let cradleWidth = fadeR * 0.25;  // thickness of cradle accumulation ring
+    let yMin = Math.max(0, Math.floor(bgCy - cradleR)), yMax = Math.min(VH - 1, Math.ceil(bgCy + cradleR));
+    let xMin = Math.max(0, Math.floor(bgCx - cradleR)), xMax = Math.min(VW - 1, Math.ceil(bgCx + cradleR));
+
+    // First pass: suppress interior and accumulate displaced energy
+    let displaced = 0;
+    let perimeterPixels = 0;
+    for (let y = yMin; y <= yMax; y++) {
+        let dy = y - bgCy;
+        for (let x = xMin; x <= xMax; x++) {
+            let dx = x - bgCx;
+            let d2 = dx * dx + dy * dy;
+            let idx = y * VW + x;
+            if (d2 < fadeR2) {
+                let f = Math.sqrt(d2) / fadeR; // 0 at center, 1 at edge
+                let suppression = 0.3 + f * 0.7;
+                let before = bgTrail[idx];
+                bgTrail[idx] *= suppression;
+                displaced += before - bgTrail[idx];
+            } else if (d2 < cradleR2) {
+                perimeterPixels++;
+            }
+        }
+    }
+
+    // Second pass: deposit displaced energy onto the cradle perimeter ring
+    if (perimeterPixels > 0 && displaced > 0) {
+        let depositPer = displaced / perimeterPixels * 0.6; // 60% redistribution
+        let tmax = 180; // cap to prevent blowout
+        for (let y = yMin; y <= yMax; y++) {
+            let dy = y - bgCy;
+            for (let x = xMin; x <= xMax; x++) {
+                let dx = x - bgCx;
+                let d2 = dx * dx + dy * dy;
+                if (d2 >= fadeR2 && d2 < cradleR2) {
+                    let idx = y * VW + x;
+                    bgTrail[idx] = Math.min(tmax, bgTrail[idx] + depositPer);
+                }
+            }
+        }
+    }
+
+    // ── Mascot sim step ──
+    if (msAgents.length < MS.agentCount) {
+        let n = Math.min(MS.spawnRate, MS.agentCount - msAgents.length);
+        for (let i = 0; i < n; i++) spawnAgent(msAgents, msCx, msCy, MS.spawnR);
+    }
+    for (let s = 0; s < MS.stepsPerFrame; s++) {
+        for (let a of msAgents) a.step(MS, msTrail, msFoods, MSIZE, MSIZE, densityMap, edgeDistMap);
+    }
+    let msD = diffuse(msTrail, msTrailPrev, MSIZE, MSIZE, MS.diffusion, MS.decay);
+    msTrail = msD.trail; msTrailPrev = msD.trailPrev;
+
+    // ── Render background: 3-layer parallax depth ──
+    // Order: Layer 2 first (clears canvas), then Layer 1 & 3 overlay on top
+
+    // Layer 2 (Network): standard thick veins — "Computed Signals"
+    // Clears canvas and draws the primary trail. Luminance damping smooths flicker.
+    renderTrail(bgSimCtx, bgTrail, VW, VH, BG, BG_COLORS, bgLumBuffer);
+
+    // Layer 1 (Substrate): dim massive chars at 0.5x scroll — "Raw Data Ocean"
+    // Overlays beneath the network perceptually (dim + large = reads as deep)
+    renderSubstrate(bgSimCtx, bgTrail, VW, VH, BG, BG_COLORS);
+
+    // Layer 3 (Interface): sharp border ring around mascot — "The Interface"
+    let ifaceInner = MSIZE * 0.30;  // starts at mascot edge
+    let ifaceOuter = ifaceInner + LAYER3_GLOW_WIDTH;
+    renderInterfaceBorder(bgSimCtx, bgTrail, VW, VH, BG, BG_COLORS, bgCx, bgCy, ifaceInner, ifaceOuter);
+
+    bgCtx.drawImage(bgSimCanvas, 0, 0);
+
+    // Atmospheric vignette — tighter falloff centered on mascot, creates depth
+    // Skip in LP mode so filaments stay visible at edges
+    if (IS_LP) { /* no vignette */ } else {
+    let vigR = Math.max(VW, VH) * 0.50;
+    let grad = bgCtx.createRadialGradient(VW/2, VH/2, MSIZE * 0.18, VW/2, VH/2, vigR);
+    let vigFade = Math.min(1, bgFc * 0.008);
+    grad.addColorStop(0, `rgba(13,13,13,${0.22 * vigFade})`);
+    grad.addColorStop(0.35, `rgba(13,13,13,${0.12 * vigFade})`);
+    grad.addColorStop(0.7, `rgba(13,13,13,${0.04 * vigFade})`);
+    grad.addColorStop(1, 'rgba(13,13,13,0)');
+    bgCtx.fillStyle = grad;
+    bgCtx.fillRect(0, 0, VW, VH);
+    } // end vignette
+
+    // ── Render mascot — mode determines visual style ──
+    // Mode 1: Ramp — ASCII density characters (stencil overlay)
+    // Mode 2: Contour — pixel trails only at edges, neon wireframe
+    // Mode 2: Code — scrolling trading code characters in mascot shape
+    // Mode 3: Mold — pure physarum pixel glow, no ASCII
+    // Mode 4: Hybrid — pixel mold base + faint ASCII stencil on top
+
+    if (formationMode === 3) {
+        // MOLD: pure organic pixel trails — no ASCII at all
+        renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
+    } else if (formationMode === 4) {
+        // HYBRID: pixel mold base, then ASCII overlaid below
+        renderTrailPixel(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
+    } else {
+        // Modes 1 & 2: ASCII trail base
+        renderTrail(mascotSimCtx, msTrail, MSIZE, MSIZE, MS, COLORS);
+    }
+    // ── ASCII stencil overlay (modes 1, 2, 4 — mode 3 is pure pixel) ──
+    let STENCIL_MASTER = window._stencilMaster ?? 0.28;
+    let isBlast = STENCIL_MASTER > 1.0;
+    if (stencilGrid && (isBlast || formation > 0) && (formationMode === 1 || formationMode === 2 || formationMode === 4)) {
+        let EDGE_STRONG = window._edgeStrong ?? 0.3;
+        let EDGE_WEAK   = window._edgeWeak ?? 0.12;
+
+        let cw = IS_MOBILE ? 5 : CELL_W;
+        let ch_ = IS_MOBILE ? 8 : CELL_H;
+        let sCols = Math.floor(MSIZE / cw);
+        let sRows = Math.floor(MSIZE / ch_);
+        let pulse = Math.sin(pulsePhase);
+        let rampShift = pulse * PULSE_RAMP * 0.6;
+        let bright = h2r(COLORS[1]), hot = h2r(COLORS[2]);
+
+        mascotSimCtx.font = `${ch_ - 2}px 'Courier New'`;
+        mascotSimCtx.textBaseline = 'top';
+        mascotSimCtx.textAlign = 'center';
+
+        let origCols = Math.floor(MSIZE / CELL_W);
+        let origRows = Math.floor(MSIZE / CELL_H);
+        // Scroll offset for Code mode (mode 3)
+        let codeScroll = formationMode === 2 ? Math.floor(msFc * 0.15) : 0;
+
+        for (let row = 0; row < sRows; row++) {
+            for (let col = 0; col < sCols; col++) {
+                let gridCol = Math.min(origCols - 1, Math.floor((col * cw + cw / 2) / CELL_W));
+                let gridRow = Math.min(origRows - 1, Math.floor((row * ch_ + ch_ / 2) / CELL_H));
+                let cell = stencilGrid[gridRow * origCols + gridCol];
+                if (!cell || cell.a < 0.1) continue;
+                if (!isBlast && formation < cell.reveal) continue;
+
+                let isEdge = cell.edge >= EDGE_STRONG;
+                let isMidEdge = cell.edge >= EDGE_WEAK;
+                let darkThresh = window._darkThresh ?? 0.12;
+                let isDarkFeature = cell.a > 0.3 && cell.lum < darkThresh;
+                let cellBlend = isBlast ? 1.0 : Math.min(1, (formation - cell.reveal) / 0.3);
+                let lumPulsed = cell.lum + pulse * 0.15;
+
+                let ch;
+                let skipCell = false;
+                let alphaBoost = 1.0;
+
+                if (isDarkFeature && !isEdge) { continue; }
+                let nearDark = false;
+                if (isEdge) {
+                    for (let dy = -1; dy <= 1 && !nearDark; dy++) {
+                        for (let dx = -1; dx <= 1 && !nearDark; dx++) {
+                            let nc = gridCol + dx, nr = gridRow + dy;
+                            if (nc >= 0 && nc < origCols && nr >= 0 && nr < origRows) {
+                                let neighbor = stencilGrid[nr * origCols + nc];
+                                if (neighbor && neighbor.a > 0.3 && neighbor.lum < 0.12) nearDark = true;
+                            }
+                        }
+                    }
+                }
+
+                let fillD = window._fillDensity ?? 3;
+
+                if (formationMode === 1) {
+                    // RAMP: density symbols, edges heavier
+                    let edgeBonus = isEdge ? 2 : (isMidEdge ? 1 : 0);
+                    let rampIdx = Math.floor((lumPulsed + cell.edge) * (CHAR_RAMP.length - 1) + rampShift + edgeBonus);
+                    rampIdx = Math.max(1, Math.min(CHAR_RAMP.length - 1, rampIdx));
+                    ch = CHAR_RAMP[rampIdx];
+                    if (!isMidEdge && (row + col) % fillD !== 0) { skipCell = true; }
+                    alphaBoost = isEdge ? 1.8 : (isMidEdge ? 0.9 : 0.4);
+
+                } else if (formationMode === 2) {
+                    // CODE: scrolling trading code fills the mascot shape
+                    let scrollIdx = ((row + codeScroll) * sCols + col) % CODE_LEN;
+                    ch = CODE_BUF[scrollIdx];
+                    if (ch === ' ') ch = CODE_BUF[(scrollIdx + 7) % CODE_LEN];
+                    let codeFillD = Math.max(1, fillD - 1);
+                    if (!isMidEdge && (row + col) % codeFillD !== 0) { skipCell = true; }
+                    alphaBoost = isEdge ? 2.0 : (isMidEdge ? 1.2 : 0.6);
+
+                } else if (formationMode === 4) {
+                    // HYBRID: ASCII overlay on pixel mold base
+                    let scrollIdx = ((row + codeScroll) * sCols + col) % CODE_LEN;
+                    ch = CODE_BUF[scrollIdx];
+                    if (ch === ' ') ch = CODE_BUF[(scrollIdx + 13) % CODE_LEN];
+                    let codeFillD = Math.max(1, fillD - 1);
+                    if (!isMidEdge && (row + col) % codeFillD !== 0) { skipCell = true; }
+                    alphaBoost = isEdge ? 1.5 : (isMidEdge ? 0.8 : 0.4);
+                }
+
+                if (nearDark) { alphaBoost = Math.max(alphaBoost, window._nearDarkBoost ?? 2.5); }
+
+                // Blast mode: fill every cell at full brightness
+                let blast = STENCIL_MASTER > 1.0;
+                if (blast && skipCell) {
+                    skipCell = false;
+                    let rampIdx = Math.max(1, Math.floor(lumPulsed * (CHAR_RAMP.length - 1)));
+                    ch = CHAR_RAMP[Math.min(CHAR_RAMP.length - 1, rampIdx)];
+                    alphaBoost = 0.6;
+                }
+                if (skipCell) continue;
+
+                let r, g, b;
+                if (blast) {
+                    // Red→white color ramp for dramatic face reveal
+                    let t = Math.min(1, lumPulsed * 1.3);
+                    if (t < 0.5) {
+                        let lt = t / 0.5;
+                        r = 60 + 195 * lt; g = 10 + 40 * lt; b = 10 + 30 * lt;
+                    } else {
+                        let ht = (t - 0.5) / 0.5;
+                        r = 255; g = 50 + 205 * ht; b = 40 + 215 * ht;
+                    }
+                    let whiten = Math.min(0.4, (STENCIL_MASTER - 1.0) * 0.15);
+                    r = r + (255 - r) * whiten; g = g + (255 - g) * whiten; b = b + (255 - b) * whiten;
+                } else {
+                    let colorPush = STENCIL_MASTER * 2.5;
+                    let lumT = Math.min(1, lumPulsed * (0.9 + colorPush * 0.3));
+                    let hotMix = 0.3 + colorPush * 0.35;
+                    let baseMix = 0.5 + colorPush * 0.25;
+                    let t = 0.2 + lumT * (0.4 + colorPush * 0.15);
+                    if (t > 0.5) {
+                        let ht = (t - 0.5) / 0.5;
+                        r = bright.r + (hot.r - bright.r) * ht * hotMix;
+                        g = bright.g + (hot.g - bright.g) * ht * hotMix;
+                        b = bright.b + (hot.b - bright.b) * ht * hotMix;
+                    } else {
+                        let bt = t / 0.5;
+                        r = bright.r * bt * baseMix + bright.r * 0.15;
+                        g = bright.g * bt * baseMix + bright.g * 0.15;
+                        b = bright.b * bt * baseMix + bright.b * 0.15;
+                    }
+                }
+
+                // Always quadratic — gives dramatic blast contrast
+                let masterAlpha = STENCIL_MASTER * (1 + STENCIL_MASTER);
+                let alphaFloor = blast ? 0.3 : 0;
+                let finalAlpha = Math.min(1, Math.max(alphaFloor, cellBlend * cell.a * masterAlpha * alphaBoost));
+                mascotSimCtx.globalAlpha = finalAlpha;
+                mascotSimCtx.fillStyle = `rgb(${r|0},${g|0},${b|0})`;
+                mascotSimCtx.fillText(ch, col * cw + Math.floor(cw / 2), row * ch_);
+            }
+        }
+        mascotSimCtx.globalAlpha = 1;
+    }
+
+    mascotCtx.clearRect(0, 0, MSIZE, MSIZE);
+    mascotCtx.drawImage(mascotSimCanvas, 0, 0);
+
+    // Feathered mask — blur the alpha edges for soft bleed
+    mascotCtx.globalCompositeOperation = 'destination-in';
+    mascotCtx.drawImage(featheredMask, 0, 0);
+    mascotCtx.globalCompositeOperation = 'source-over';
+
+    // ── Ghost afterimage fade — burned retina effect ──
+    // Hold the ghost at full intensity while trails are sparse, then fade as they fill in
+    if (ghostFadeStart < 0 && msFc > GHOST_HOLD_FRAMES) ghostFadeStart = msFc;
+    if (ghostFadeStart > 0) {
+        let elapsed = msFc - ghostFadeStart;
+        let t = Math.min(1, elapsed / GHOST_FADE_FRAMES);
+        // Cubic ease-out for organic disappearance
+        let opacity = 1 - t * t * (3 - 2 * t);
+        ghostCanvas.style.opacity = opacity.toFixed(3);
+        if (opacity <= 0.001) ghostCanvas.classList.remove('visible');
+    }
+
+    // ── Resurface — retinal burn: strong early, settles to subtle base ──
+    {
+        let rOpacity;
+        if (msFc < RESURFACE_FADE_UP) {
+            // Fade in quickly to peak
+            let t = msFc / RESURFACE_FADE_UP;
+            rOpacity = RESURFACE_EARLY_PEAK * t * t * (3 - 2 * t);
+        } else if (msFc < RESURFACE_SETTLE_START) {
+            // Hold at peak while trails are still sparse
+            rOpacity = RESURFACE_EARLY_PEAK;
+        } else if (msFc < RESURFACE_SETTLE_START + RESURFACE_SETTLE_DUR) {
+            // Gradually settle to floor as trails fill in
+            let t = (msFc - RESURFACE_SETTLE_START) / RESURFACE_SETTLE_DUR;
+            let ease = t * t * (3 - 2 * t);
+            rOpacity = RESURFACE_EARLY_PEAK + (RESURFACE_FLOOR - RESURFACE_EARLY_PEAK) * ease;
+        } else {
+            rOpacity = RESURFACE_FLOOR;
+        }
+        resurfaceCanvas.style.opacity = rOpacity.toFixed(3);
+    }
+
+    bgCtx.restore();
+
+    requestAnimationFrame(frame);
+}
+
+let isRecording = false;
+
+
+window.addEventListener('resize', () => {
+    resize();
+    if (USE_WORKER && worker) {
+        workerReady = false;
+        workerBusy = false;
+        let mid = buildMaskImageData();
+        buildFeatheredMask();
+        worker.postMessage({ type: 'resize', VW: VW, VH: VH, MSIZE: MSIZE, maskImageData: mid });
+    } else {
+        initAll();
+    }
+});
+
+// Hold Space to flash — boosts stencil (ASCII modes) + trail brightness (pixel modes)
+let _savedMaster = null;
+let _trailBoost = 1.0;
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !e.target.matches('input, textarea, select')) {
+        e.preventDefault();
+        if (_savedMaster === null) {
+            // If LP fade is running, cancel it and save the target value instead
+            if (window._lpBlastStart) {
+                _savedMaster = 0.40;
+                window._lpBlastStart = false;
+            } else {
+                _savedMaster = window._stencilMaster ?? 0.28;
+            }
+            window._stencilMaster = 3.0;
+            _trailBoost = 4.0;
+            if (USE_WORKER && worker) worker.postMessage({ type: 'blast', active: true });
+        }
+    }
+});
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'Space' && _savedMaster !== null) {
+        window._stencilMaster = _savedMaster;
+        _trailBoost = 1.0;
+        if (USE_WORKER && worker) worker.postMessage({ type: 'blast', active: false, savedMaster: _savedMaster });
+        _savedMaster = null;
+    }
+});
+
+// Touch/pointer-hold blast for mobile (mirrors spacebar hold)
+function _isUIElement(t) { return false; }
+function _blastStart() {
+    if (_savedMaster === null) {
+        if (window._lpBlastStart) {
+            _savedMaster = 0.40;
+            window._lpBlastStart = false;
+        } else {
+            _savedMaster = window._stencilMaster ?? 0.7;
+        }
+        window._stencilMaster = 3.0;
+        _trailBoost = 4.0;
+        if (USE_WORKER && worker) worker.postMessage({ type: 'blast', active: true });
+    }
+}
+function _blastEnd() {
+    if (_savedMaster !== null) {
+        window._stencilMaster = _savedMaster;
+        _trailBoost = 1.0;
+        if (USE_WORKER && worker) worker.postMessage({ type: 'blast', active: false, savedMaster: _savedMaster });
+        _savedMaster = null;
+    }
+}
+// Touch events — { passive: false } so preventDefault works on Android Chrome
+window.addEventListener('touchstart', (e) => {
+    if (_isUIElement(e.target)) return;
+    e.preventDefault();
+    _blastStart();
+}, { passive: false });
+window.addEventListener('touchend', _blastEnd);
+window.addEventListener('touchcancel', _blastEnd); // foldables fire cancel on fold/unfold
+
+// Pointer fallback — covers Chrome DevTools responsive mode & stylus input
+// Only activate for non-keyboard, non-spacebar pointer interactions
+let _pointerBlastActive = false;
+window.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && !IS_MOBILE) return; // desktop mouse handled by spacebar
+    if (_isUIElement(e.target)) return;
+    _pointerBlastActive = true;
+    _blastStart();
+});
+window.addEventListener('pointerup', (e) => {
+    if (_pointerBlastActive) { _blastEnd(); _pointerBlastActive = false; }
+});
+window.addEventListener('pointercancel', (e) => {
+    if (_pointerBlastActive) { _blastEnd(); _pointerBlastActive = false; }
+});
+// Also support long-press via mousedown on narrow viewports (DevTools responsive)
+if (window.innerWidth <= 768) {
+    window.addEventListener('mousedown', (e) => {
+        if (_isUIElement(e.target)) return;
+        _blastStart();
+    });
+    window.addEventListener('mouseup', _blastEnd);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WORKER MODE
+// ═══════════════════════════════════════════════════════════════
+
+let worker = null;
+let workerReady = false;
+let workerBusy = false; // lockstep: true while waiting for frame response
+
+function buildMaskImageData() {
+    // Draw mascot onto mask canvas and extract ImageData for the worker
+    maskCanvasEl.width = MSIZE;
+    maskCanvasEl.height = MSIZE;
+    maskCtx.clearRect(0, 0, MSIZE, MSIZE);
+    let s = MSIZE * 0.7;
+    let mx = (MSIZE - s) / 2;
+    let my = (MSIZE - s) / 2;
+    maskCtx.drawImage(maskImg, mx, my, s, s);
+    return maskCtx.getImageData(0, 0, MSIZE, MSIZE);
+}
+
+function buildFeatheredMask() {
+    // Build feathered mask on main thread (filter: 'blur()' works here)
+    featheredMask = document.createElement('canvas');
+    featheredMask.width = MSIZE;
+    featheredMask.height = MSIZE;
+    let fCtx = featheredMask.getContext('2d');
+    fCtx.filter = 'blur(14px)';
+    fCtx.drawImage(maskCanvasEl, 0, 0);
+    fCtx.filter = 'none';
+}
+
+function startWorkerMode() {
+    worker = new Worker('stencil-worker.js');
+
+    // Build mask data on main thread
+    let mid = buildMaskImageData();
+    buildFeatheredMask();
+
+    // Ghost + resurface layers — show immediately while worker initializes
+    ghostCanvas.width = MSIZE; ghostCanvas.height = MSIZE;
+    ghostCanvas.style.width = MSIZE + 'px';
+    ghostCanvas.style.height = MSIZE + 'px';
+    resurfaceCanvas.width = MSIZE; resurfaceCanvas.height = MSIZE;
+    resurfaceCanvas.style.width = MSIZE + 'px';
+    resurfaceCanvas.style.height = MSIZE + 'px';
+    if (IS_MOBILE) {
+        let screenW = window.innerWidth, screenH = window.innerHeight;
+        let displayMsize = Math.floor(Math.min(screenW, screenH) * 0.5);
+        ghostCanvas.style.width = displayMsize + 'px';
+        ghostCanvas.style.height = displayMsize + 'px';
+        resurfaceCanvas.style.width = displayMsize + 'px';
+        resurfaceCanvas.style.height = displayMsize + 'px';
+    }
+
+    worker.onmessage = function(e) {
+        let msg = e.data;
+        if (msg.type === 'ready') {
+            onWorkerReady(msg);
+        } else if (msg.type === 'frame') {
+            onWorkerFrame(msg);
+        }
+    };
+
+    // Send init
+    worker.postMessage({
+        type: 'init',
+        seed: seed,
+        IS_MOBILE: IS_MOBILE,
+        IS_LP: IS_LP,
+        VW: VW,
+        VH: VH,
+        MSIZE: MSIZE,
+        formationMode: formationMode,
+        maskImageData: mid,
+        params: {
+            stencilMaster: window._stencilMaster ?? 0.28,
+            pulseSpeed: window._pulseSpeed ?? PULSE_SPEED,
+            stencilEnd: window._stencilEnd ?? STENCIL_END,
+            edgeStrong: window._edgeStrong ?? 0.3,
+            edgeWeak: window._edgeWeak ?? 0.12,
+            edgeFadeDepth: window._edgeFadeDepth ?? 30,
+            darkThresh: window._darkThresh ?? 0.12,
+            nearDarkBoost: window._nearDarkBoost ?? 2.5,
+            fillDensity: window._fillDensity ?? 3,
+        },
+    });
+}
+
+function onWorkerReady(msg) {
+    // Draw ghost bitmap with feathered mask (soft edges)
+    let gCtx = ghostCanvas.getContext('2d');
+    gCtx.clearRect(0, 0, MSIZE, MSIZE);
+    gCtx.drawImage(msg.ghostBitmap, 0, 0);
+    msg.ghostBitmap.close();
+    // Apply feathered mask so ghost has soft dissolving edges, not hard silhouette
+    if (featheredMask) {
+        gCtx.globalCompositeOperation = 'destination-in';
+        gCtx.drawImage(featheredMask, 0, 0);
+        gCtx.globalCompositeOperation = 'source-over';
+    }
+    ghostCanvas.classList.add('visible');
+    ghostCanvas.style.opacity = '1';
+
+    // Build resurface layer — full-color mascot art, feather-masked
+    if (maskImg) {
+        let rCtx = resurfaceCanvas.getContext('2d');
+        rCtx.clearRect(0, 0, MSIZE, MSIZE);
+        let s = MSIZE * 0.7;
+        let rmx = (MSIZE - s) / 2;
+        let rmy = (MSIZE - s) / 2;
+        rCtx.drawImage(maskImg, rmx, rmy, s, s);
+        if (featheredMask) {
+            rCtx.globalCompositeOperation = 'destination-in';
+            rCtx.drawImage(featheredMask, 0, 0);
+            rCtx.globalCompositeOperation = 'source-over';
+        }
+    }
+
+    // Inject dynamic chromatic CSS from palette info
+    let warm = msg.chromaticWarm;
+    let cool = msg.chromaticCool;
+    let mascotAnim;
+    if (IS_MOBILE) {
+        mascotAnim = `
+        @keyframes chromatic-orbit-mobile {
+            0%   { filter: drop-shadow(3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(-3px 0 2px ${cool.replace('A','0.20')}); }
+            25%  { filter: drop-shadow(0 3px 2px ${warm.replace('A','0.20')}) drop-shadow(0 -3px 2px ${cool.replace('A','0.20')}); }
+            50%  { filter: drop-shadow(-3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(3px 0 2px ${cool.replace('A','0.20')}); }
+            75%  { filter: drop-shadow(0 -3px 2px ${warm.replace('A','0.20')}) drop-shadow(0 3px 2px ${cool.replace('A','0.20')}); }
+            100% { filter: drop-shadow(3px 0 2px ${warm.replace('A','0.20')}) drop-shadow(-3px 0 2px ${cool.replace('A','0.20')}); }
+        }`;
+    } else {
+        mascotAnim = `
+        @keyframes chromatic-orbit {
+            0%   { filter: drop-shadow(5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(-5px 0 3px ${cool.replace('A','0.30')}); }
+            25%  { filter: drop-shadow(0 5px 3px ${warm.replace('A','0.30')}) drop-shadow(0 -5px 3px ${cool.replace('A','0.30')}); }
+            50%  { filter: drop-shadow(-5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(5px 0 3px ${cool.replace('A','0.30')}); }
+            75%  { filter: drop-shadow(0 -5px 3px ${warm.replace('A','0.30')}) drop-shadow(0 5px 3px ${cool.replace('A','0.30')}); }
+            100% { filter: drop-shadow(5px 0 3px ${warm.replace('A','0.30')}) drop-shadow(-5px 0 3px ${cool.replace('A','0.30')}); }
+        }
+        @keyframes bg-chromatic {
+            0%   { filter: drop-shadow(3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(-3px 0 1px ${cool.replace('A','0.08')}); }
+            50%  { filter: drop-shadow(-3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(3px 0 1px ${cool.replace('A','0.08')}); }
+            100% { filter: drop-shadow(3px 0 1px ${warm.replace('A','0.08')}) drop-shadow(-3px 0 1px ${cool.replace('A','0.08')}); }
+        }`;
+    }
+    let styleId = 'dynamic-chromatic';
+    let existing = document.getElementById(styleId);
+    if (existing) existing.remove();
+    let style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = mascotAnim;
+    document.head.appendChild(style);
+
+    // Re-trigger bg chromatic
+    let bgEl = document.getElementById('bg');
+    bgEl.style.animation = 'none';
+    void bgEl.offsetHeight;
+    if (!IS_MOBILE) bgEl.style.animation = 'bg-chromatic 14s linear infinite';
+
+    // Sync BG/MS params from worker for slider display
+    if (msg.bgParams) Object.assign(BG, msg.bgParams);
+    if (msg.msParams) Object.assign(MS, msg.msParams);
+    syncSliders();
+
+    // Trigger entrance
+    mascotCanvas.classList.remove('entered');
+    void mascotCanvas.offsetHeight;
+    mascotCanvas.classList.add('entered');
+
+    workerReady = true;
+    workerBusy = false;
+
+    // Start the compositing frame loop
+    requestAnimationFrame(workerFrameLoop);
+}
+
+function onWorkerFrame(msg) {
+    // ── Composite BG ──
+    bgCtx.drawImage(msg.bgBitmap, 0, 0);
+    msg.bgBitmap.close();
+
+    // Atmospheric vignette
+    let vigR = Math.max(VW, VH) * 0.50;
+    let grad = bgCtx.createRadialGradient(VW/2, VH/2, MSIZE * 0.18, VW/2, VH/2, vigR);
+    let vigFade = Math.min(1, msg.frameNum * 0.008);
+    grad.addColorStop(0, `rgba(13,13,13,${0.22 * vigFade})`);
+    grad.addColorStop(0.35, `rgba(13,13,13,${0.12 * vigFade})`);
+    grad.addColorStop(0.7, `rgba(13,13,13,${0.04 * vigFade})`);
+    grad.addColorStop(1, 'rgba(13,13,13,0)');
+    bgCtx.fillStyle = grad;
+    bgCtx.fillRect(0, 0, VW, VH);
+
+    // ── Composite mascot with feathered mask ──
+    mascotCtx.clearRect(0, 0, MSIZE, MSIZE);
+    mascotCtx.drawImage(msg.mascotBitmap, 0, 0);
+    msg.mascotBitmap.close();
+
+    mascotCtx.globalCompositeOperation = 'destination-in';
+    mascotCtx.drawImage(featheredMask, 0, 0);
+    mascotCtx.globalCompositeOperation = 'source-over';
+
+    // ── Ghost opacity ──
+    ghostCanvas.style.opacity = msg.ghostOpacity.toFixed(3);
+    if (!msg.ghostVisible) ghostCanvas.classList.remove('visible');
+
+    // ── Resurface opacity ──
+    resurfaceCanvas.style.opacity = msg.resurfaceOpacity.toFixed(3);
+
+    // Landing page — no status/watermark/hint UI
+
+
+    workerBusy = false;
+}
+
+function workerFrameLoop() {
+    if (!workerReady) return;
+    if (!workerBusy) {
+        workerBusy = true;
+        worker.postMessage({ type: 'tick' });
+    }
+    requestAnimationFrame(workerFrameLoop);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════════
+
+async function boot() {
+    await loadMascot();
+    resize();
+
+    if (USE_WORKER) {
+        startWorkerMode();
+    } else {
+        initAll();
+        running = true;
+        requestAnimationFrame(() => {
+            mascotCanvas.classList.add('entered');
+            frame();
+        });
+    }
+}
+
+function updateShareURL() {
+    let p = new URLSearchParams();
+    p.set('seed', seed);
+    history.replaceState(null, '', '?' + p.toString());
+}
+
+boot();
+</script>
+</body>
+</html>
