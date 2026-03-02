@@ -3,8 +3,6 @@ title: "Getting Started"
 description: "Requirements, quick links, and first steps for each simulator."
 ---
 
-# Getting Started
-
 ## Requirements
 
 - A modern web browser (Chrome recommended, Firefox/Edge/Safari also work)

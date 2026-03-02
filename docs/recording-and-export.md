@@ -3,8 +3,6 @@ title: "Recording & Export"
 description: "PNG, WebM, GIF, fullscreen 1080p, and batch recording across all simulators."
 ---
 
-# Recording & Export
-
 All three simulators support PNG snapshots and WebM video recording. The Generator adds GIF export, fullscreen 1080p capture, and batch recording.
 
 ---

@@ -3,8 +3,6 @@ title: "Seed System"
 description: "How deterministic seeds control swarm patterns, palettes, and agent identity."
 ---
 
-# Seed System
-
 Every Shumi agent is identified by a unique seed. Seeds are deterministic: the same seed always produces the same swarm pattern in a given simulator. Your seed is your agent's visual identity.
 
 ## How Seeds Work

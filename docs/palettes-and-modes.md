@@ -3,12 +3,6 @@ title: "Swarm Palettes & Modes"
 description: "Unified reference for color presets, formation modes, and texture profiles."
 ---
 
-# Swarm Palettes & Modes
-
-Each simulator has its own palette and mode system. This page is the unified reference.
-
----
-
 ## The Generator: 8 Color Presets
 
 The Generator uses a three-stop color system. Every pixel interpolates between these stops based on signal intensity and distance from the hub.
