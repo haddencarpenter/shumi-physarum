@@ -1,3 +1,8 @@
+---
+title: "The Masked"
+description: "Minimal seed explorer with automatic palette and texture selection."
+---
+
 # The Masked (masked.html)
 
 The Masked is the minimal seed explorer. No sidebars, no sliders: just the swarm, the mascot, and three buttons. Each seed deterministically selects a palette and texture profile, with per-seed color drift creating infinite variation within each family.

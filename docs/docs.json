@@ -1,0 +1,47 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "maple",
+  "name": "Shumi Visual System",
+  "colors": {
+    "primary": "#D4A843",
+    "dark": "#1A1A1A"
+  },
+  "logo": "/og-thumbnail.png",
+  "favicon": "/og-thumbnail.png",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": ["index", "getting-started"]
+      },
+      {
+        "group": "Simulators",
+        "pages": ["generator", "stencil", "masked"]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "palettes-and-modes",
+          "recording-and-export",
+          "seed-system",
+          "seed-gallery",
+          "tips-and-recipes"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": ["how-it-works"]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      { "label": "Live Demo", "href": "https://haddencarpenter.github.io/shumi-physarum/" }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "website": "https://shumi.ai"
+    }
+  }
+}

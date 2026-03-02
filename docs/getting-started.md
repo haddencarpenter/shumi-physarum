@@ -1,3 +1,8 @@
+---
+title: "Getting Started"
+description: "Requirements, quick links, and first steps for each simulator."
+---
+
 # Getting Started
 
 ## Requirements
@@ -9,9 +14,9 @@
 
 | If you want to... | Use | Link |
 |-------------------|-----|------|
-| Explore and tweak every parameter | [The Generator](generator.md) | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
-| Create mascot avatar compositions | [The Stencil](stencil.md) | [Open →](https://haddencarpenter.github.io/shumi-physarum/stencil.html) |
-| Quickly browse seed personalities | [The Masked](masked.md) | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
+| Explore and tweak every parameter | [The Generator](generator) | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
+| Create mascot avatar compositions | [The Stencil](stencil) | [Open →](https://haddencarpenter.github.io/shumi-physarum/stencil.html) |
+| Quickly browse seed personalities | [The Masked](masked) | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
 | See the branded landing page | Demo Hub | [Open →](https://haddencarpenter.github.io/shumi-physarum/demo.html) |
 
 ## Opening a Simulator

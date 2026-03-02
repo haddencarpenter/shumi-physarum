@@ -1,3 +1,8 @@
+---
+title: "Swarm Palettes & Modes"
+description: "Unified reference for color presets, formation modes, and texture profiles."
+---
+
 # Swarm Palettes & Modes
 
 Each simulator has its own palette and mode system. This page is the unified reference.

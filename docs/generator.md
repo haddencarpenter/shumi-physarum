@@ -1,3 +1,8 @@
+---
+title: "The Generator"
+description: "Full-control physarum laboratory with 14 sliders, 8 palettes, and a recording studio."
+---
+
 # The Generator (index.html)
 
 The Generator is the full-control physarum laboratory. It exposes every parameter of the swarm simulation through a sidebar of sliders, giving you complete creative authority over cell behavior, signal chemistry, rendering, and color.
@@ -106,7 +111,7 @@ These affect the visual output without changing the underlying swarm behavior.
 
 ## Color Presets
 
-The Generator includes 8 curated palettes. See [Swarm Palettes & Modes](palettes-and-modes.md) for full color details.
+The Generator includes 8 curated palettes. See [Swarm Palettes & Modes](palettes-and-modes) for full color details.
 
 | Preset | Character |
 |--------|-----------|
@@ -123,7 +128,7 @@ Custom colors can be set via three color pickers: Signal Base, Signal Bright, an
 
 ## Export Options
 
-The Generator has the most complete export toolkit. See [Recording & Export](recording-and-export.md) for full details.
+The Generator has the most complete export toolkit. See [Recording & Export](recording-and-export) for full details.
 
 | Feature | Description |
 |---------|-------------|

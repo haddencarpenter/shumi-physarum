@@ -1,3 +1,8 @@
+---
+title: "Tips & Recipes"
+description: "Parameter combinations and workflow tips for Generator, Stencil, and Masked."
+---
+
 # Tips & Recipes
 
 Parameter combinations and workflow tips across all three simulators.

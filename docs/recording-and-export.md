@@ -1,3 +1,8 @@
+---
+title: "Recording & Export"
+description: "PNG, WebM, GIF, fullscreen 1080p, and batch recording across all simulators."
+---
+
 # Recording & Export
 
 All three simulators support PNG snapshots and WebM video recording. The Generator adds GIF export, fullscreen 1080p capture, and batch recording.
@@ -122,7 +127,7 @@ After bookmarking seeds:
 
 ## Share URL (Stencil Only)
 
-The Stencil's **Share** button copies a URL to clipboard that encodes the current seed, formation mode, and key stencil settings. See [The Stencil](stencil.md) for details on which parameters are encoded.
+The Stencil's **Share** button copies a URL to clipboard that encodes the current seed, formation mode, and key stencil settings. See [The Stencil](stencil) for details on which parameters are encoded.
 
 ---
 

@@ -1,3 +1,8 @@
+---
+title: "The Stencil"
+description: "The identity engine that layers physarum behind the Shumi mascot in four formation modes."
+---
+
 # The Stencil (stencil.html)
 
 The Stencil layers the physarum swarm behind and through the Shumi mascot, creating compositions where organic signal networks grow around a centered image. This is the identity engine for Shumi agent avatars.
@@ -105,7 +110,7 @@ The URL updates automatically as you change settings. Recipients see the exact s
 
 ## Palettes & Textures
 
-The Stencil uses 8 palettes (Ember, Frost, Moss, Pearl, Bloom, Honey, Tide, Rust) and 8 texture profiles (standard, crystalline, smoke, coral, silk, electric, flow, spore). Both are selected deterministically by seed. See [Swarm Palettes & Modes](palettes-and-modes.md) for details.
+The Stencil uses 8 palettes (Ember, Frost, Moss, Pearl, Bloom, Honey, Tide, Rust) and 8 texture profiles (standard, crystalline, smoke, coral, silk, electric, flow, spore). Both are selected deterministically by seed. See [Swarm Palettes & Modes](palettes-and-modes) for details.
 
 ## Controls Summary
 
