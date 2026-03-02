@@ -755,7 +755,7 @@ if (IS_LP) {
     window._stencilMaster = 3.0;
     window._trailBoost = 4.0;
     window._blastOnLoad = true;
-    window._blastTarget = 0.70;
+    window._blastTarget = IS_MOBILE ? 0.40 : 0.70;
 } else if (IS_MOBILE) {
     // ~70% of desktop agent populations — full res canvas needs more agents
     BG.agentCount = Math.round(BG.agentCount * 0.70);

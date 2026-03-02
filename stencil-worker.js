@@ -192,11 +192,11 @@ const RESURFACE_DECAY = 360;         // exponential half-life ~6s (decays to ~0.
 // LP resurface constants
 const LP_FADE_IN = 90;
 const LP_PEAK_DESKTOP = 0.55;
-const LP_PEAK_MOBILE = 0.60;
+const LP_PEAK_MOBILE = 0.40;
 const LP_PULSE_PERIOD = 210;         // 3.5s per breath (slightly slower for LP)
 const LP_DECAY = 420;                // ~7s half-life
 const LP_FLOOR_DESKTOP = 0.25;
-const LP_FLOOR_MOBILE = 0.30;
+const LP_FLOOR_MOBILE = 0.15;
 
 // Mask data (received from main thread)
 let maskImageData = null; // ImageData of the mascot
@@ -662,7 +662,7 @@ function renderTrail(ctx, trail, w, h, P, colors) {
         for (let col = 0; col < cols; col++) {
             let px = col * cellW + Math.floor(cellW / 2);
             if (px >= w) continue;
-            let v = trail[py * w + px] * P.trailBright;
+            let v = trail[py * w + px] * P.trailBright * (_trailBoost || 1.0);
             if (v < 5) continue;
 
             let ch = CODE_BUF[(row * cols + col) % CODE_LEN];
@@ -847,7 +847,7 @@ function handleTick() {
     if (_blastOnLoad) {
         let BLAST_HOLD = 60;
         let BLAST_FADE = 150;
-        let TARGET_BOOST = IS_LP ? 2.5 : 1.0;
+        let TARGET_BOOST = IS_LP ? (IS_MOBILE ? 1.5 : 2.5) : 1.0;
         if (msFc <= BLAST_HOLD) {
             // hold at blast
         } else if (msFc <= BLAST_HOLD + BLAST_FADE) {
