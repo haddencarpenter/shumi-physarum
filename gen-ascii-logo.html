@@ -3,29 +3,34 @@
 <head><title>Shumi ASCII Logo Generator</title></head>
 <body style="background:#111;color:#eee;font-family:sans-serif;padding:40px;display:flex;flex-direction:column;align-items:center;gap:20px">
 <h2>Shumi ASCII Logo Generator</h2>
-<p>Adjust settings, then click Download.</p>
 
 <div style="display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap;justify-content:center">
   <div>
     <h3>Original</h3>
-    <canvas id="orig" style="border:1px solid #333;image-rendering:pixelated"></canvas>
+    <canvas id="orig" width="256" height="256" style="border:1px solid #333"></canvas>
   </div>
   <div>
     <h3>ASCII Overlay</h3>
-    <canvas id="out" style="border:1px solid #333;image-rendering:pixelated"></canvas>
+    <canvas id="out" width="256" height="256" style="border:1px solid #333"></canvas>
   </div>
   <div>
-    <h3>Preview (32px)</h3>
-    <img id="preview" style="width:64px;height:64px;image-rendering:auto;border:1px solid #333;border-radius:4px">
+    <h3>Preview sizes</h3>
+    <div style="display:flex;gap:12px;align-items:end">
+      <div><img id="p64" style="width:64px;height:64px;border:1px solid #333;border-radius:6px"><br><small>64px</small></div>
+      <div><img id="p36" style="width:36px;height:36px;border:1px solid #333;border-radius:4px"><br><small>36px</small></div>
+      <div><img id="p24" style="width:24px;height:24px;border:1px solid #333;border-radius:3px"><br><small>24px</small></div>
+    </div>
   </div>
 </div>
 
-<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
-  <label>ASCII opacity: <input type="range" id="asciiAlpha" min="0" max="100" value="18"> <span id="alphaVal">0.18</span></label>
-  <label>Cell size: <input type="range" id="cellSize" min="2" max="8" value="3"> <span id="cellVal">3</span></label>
+<div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:800px">
+  <label>ASCII strength: <input type="range" id="strength" min="0" max="100" value="50"> <span id="strengthVal">50%</span></label>
+  <label>Cell size: <input type="range" id="cellSize" min="3" max="12" value="5"> <span id="cellVal">5</span></label>
+  <label>BG darken: <input type="range" id="bgDarken" min="0" max="100" value="40"> <span id="darkenVal">40%</span></label>
   <label>Color:
     <select id="colorMode">
       <option value="gold">Gold (physarum)</option>
+      <option value="hot">Hot gold/white</option>
       <option value="mono">Monochrome</option>
       <option value="tinted">Image-tinted</option>
     </select>
@@ -40,64 +45,54 @@
 </div>
 
 <div style="display:flex;gap:16px">
-  <button onclick="render()" style="padding:8px 24px;font-size:16px;cursor:pointer">Refresh</button>
-  <button onclick="download()" style="padding:8px 24px;font-size:16px;cursor:pointer;background:#D4A84B;border:none;border-radius:6px;font-weight:600">Download PNG</button>
-  <button onclick="downloadWebP()" style="padding:8px 24px;font-size:16px;cursor:pointer;background:#7B5EA7;color:#fff;border:none;border-radius:6px;font-weight:600">Download WebP</button>
+  <button onclick="download('png')" style="padding:8px 24px;font-size:16px;cursor:pointer;background:#D4A84B;border:none;border-radius:6px;font-weight:600">Download PNG</button>
+  <button onclick="download('webp')" style="padding:8px 24px;font-size:16px;cursor:pointer;background:#7B5EA7;color:#fff;border:none;border-radius:6px;font-weight:600">Download WebP</button>
 </div>
 
 <canvas id="hires" style="display:none"></canvas>
 
 <script>
-const CODE_CHARS = '01{}[]()<>=;:+-*/&|^~%$#@!?.,:;abcdefghijklmnopqrstuvwxyz';
+const CODE_CHARS = '01{}[]()<>=;:+-*/&|^~%$#@!?.abcdefghijklmnop';
 const DENSITY_RAMP = ' .:-=+*#%@';
 const BRAILLE_RAMP = ' ⠁⠃⠇⠏⠟⠿⡿⣿';
-
-const RAMPS = {
-  code: CODE_CHARS,
-  density: DENSITY_RAMP,
-  braille: BRAILLE_RAMP
-};
+const RAMPS = { code: CODE_CHARS, density: DENSITY_RAMP, braille: BRAILLE_RAMP };
 
 const img = new Image();
 img.crossOrigin = 'anonymous';
 img.onload = () => render();
 img.src = 'shumi.webp';
 
-function render() {
-  const SIZE = 256; // work at 256px for quality
-  const orig = document.getElementById('orig');
-  const out = document.getElementById('out');
-  const hires = document.getElementById('hires');
-  orig.width = orig.height = SIZE;
-  out.width = out.height = SIZE;
-  hires.width = hires.height = 512;
-
-  const oCtx = orig.getContext('2d');
-  const ctx = out.getContext('2d');
-
-  // Draw original
-  oCtx.clearRect(0, 0, SIZE, SIZE);
-  oCtx.drawImage(img, 0, 0, SIZE, SIZE);
-
-  // Draw base image on output
+function renderToCanvas(ctx, SIZE, cellScale) {
+  cellScale = cellScale || 1;
   ctx.clearRect(0, 0, SIZE, SIZE);
-  ctx.drawImage(img, 0, 0, SIZE, SIZE);
 
-  // Get pixel data for luminance
-  const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
-  const px = imgData.data;
-
-  const alpha = parseInt(document.getElementById('asciiAlpha').value) / 100;
-  const cell = parseInt(document.getElementById('cellSize').value);
+  const strength = parseInt(document.getElementById('strength').value) / 100;
+  const cell = parseInt(document.getElementById('cellSize').value) * cellScale;
+  const bgDarken = parseInt(document.getElementById('bgDarken').value) / 100;
   const colorMode = document.getElementById('colorMode').value;
   const rampMode = document.getElementById('rampMode').value;
   const ramp = RAMPS[rampMode];
 
-  document.getElementById('alphaVal').textContent = alpha.toFixed(2);
-  document.getElementById('cellVal').textContent = cell;
+  // Step 1: Draw original image
+  ctx.drawImage(img, 0, 0, SIZE, SIZE);
 
-  ctx.font = `${cell}px 'Courier New', monospace`;
-  ctx.textBaseline = 'top';
+  // Step 2: Darken the base image so ASCII pops
+  ctx.globalCompositeOperation = 'multiply';
+  const darkLevel = Math.floor(255 * (1 - bgDarken));
+  ctx.fillStyle = `rgb(${darkLevel},${darkLevel},${darkLevel})`;
+  ctx.fillRect(0, 0, SIZE, SIZE);
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Get pixel data from the ORIGINAL (not darkened) for luminance sampling
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = tmpCanvas.height = SIZE;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.drawImage(img, 0, 0, SIZE, SIZE);
+  const origData = tmpCtx.getImageData(0, 0, SIZE, SIZE).data;
+
+  // Step 3: Draw ASCII characters
+  ctx.font = `bold ${Math.max(cell - 1, 2)}px 'Courier New', monospace`;
+  ctx.textBaseline = 'middle';
   ctx.textAlign = 'center';
 
   const cols = Math.floor(SIZE / cell);
@@ -105,151 +100,111 @@ function render() {
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      const sx = col * cell + Math.floor(cell / 2);
-      const sy = row * cell + Math.floor(cell / 2);
+      const cx = col * cell + cell / 2;
+      const cy = row * cell + cell / 2;
+      const sx = Math.floor(cx);
+      const sy = Math.floor(cy);
+      if (sx >= SIZE || sy >= SIZE) continue;
       const i = (sy * SIZE + sx) * 4;
 
-      const r = px[i], g = px[i+1], b = px[i+2], a = px[i+3];
-      if (a < 30) continue; // skip transparent
-
-      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-      // Pick character based on luminance
-      let ch;
-      if (rampMode === 'code') {
-        // Pseudo-random but deterministic per position
-        const hash = (row * 137 + col * 251 + row * col) % CODE_CHARS.length;
-        ch = CODE_CHARS[hash];
-        // Skip chars in very dark areas
-        if (lum < 0.08) continue;
-      } else {
-        const idx = Math.floor(lum * (ramp.length - 1));
-        ch = ramp[idx];
-        if (ch === ' ') continue;
-      }
-
-      // Alpha scales with luminance — brighter areas get more ASCII
-      const lumAlpha = alpha * Math.min(1, lum * 1.5);
-
-      let cr, cg, cb;
-      if (colorMode === 'gold') {
-        // Physarum gold palette
-        const t = Math.min(lum * 2, 1);
-        cr = Math.floor(140 + t * 72);  // 140 → 212
-        cg = Math.floor(100 + t * 68);  // 100 → 168
-        cb = Math.floor(20 + t * 55);   // 20 → 75
-      } else if (colorMode === 'mono') {
-        const v = Math.floor(180 + lum * 75);
-        cr = cg = cb = v;
-      } else {
-        // Tinted — use actual pixel color brightened
-        cr = Math.min(255, r + 60);
-        cg = Math.min(255, g + 60);
-        cb = Math.min(255, b + 60);
-      }
-
-      ctx.globalAlpha = lumAlpha;
-      ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
-      ctx.fillText(ch, col * cell + Math.floor(cell / 2), row * cell);
-    }
-  }
-  ctx.globalAlpha = 1;
-
-  // Also render hi-res version
-  renderHires(512);
-
-  // Update preview
-  const preview = document.getElementById('preview');
-  preview.src = out.toDataURL('image/png');
-}
-
-function renderHires(SIZE) {
-  const hires = document.getElementById('hires');
-  hires.width = hires.height = SIZE;
-  const ctx = hires.getContext('2d');
-
-  ctx.clearRect(0, 0, SIZE, SIZE);
-  ctx.drawImage(img, 0, 0, SIZE, SIZE);
-
-  const imgData = ctx.getImageData(0, 0, SIZE, SIZE);
-  const px = imgData.data;
-
-  const alpha = parseInt(document.getElementById('asciiAlpha').value) / 100;
-  const cell = parseInt(document.getElementById('cellSize').value) * 2; // scale up
-  const colorMode = document.getElementById('colorMode').value;
-  const rampMode = document.getElementById('rampMode').value;
-  const ramp = RAMPS[rampMode];
-
-  ctx.font = `${cell}px 'Courier New', monospace`;
-  ctx.textBaseline = 'top';
-  ctx.textAlign = 'center';
-
-  const cols = Math.floor(SIZE / cell);
-  const rows = Math.floor(SIZE / cell);
-
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const sx = col * cell + Math.floor(cell / 2);
-      const sy = row * cell + Math.floor(cell / 2);
-      const i = (sy * SIZE + sx) * 4;
-
-      const r = px[i], g = px[i+1], b = px[i+2], a = px[i+3];
+      const r = origData[i], g = origData[i+1], b = origData[i+2], a = origData[i+3];
       if (a < 30) continue;
 
       const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
+      // Pick character
       let ch;
       if (rampMode === 'code') {
-        const hash = (row * 137 + col * 251 + row * col) % CODE_CHARS.length;
+        const hash = (row * 137 + col * 251 + row * col * 3) % CODE_CHARS.length;
         ch = CODE_CHARS[hash];
-        if (lum < 0.08) continue;
       } else {
-        const idx = Math.floor(lum * (ramp.length - 1));
+        const idx = Math.min(ramp.length - 1, Math.floor(lum * ramp.length));
         ch = ramp[idx];
         if (ch === ' ') continue;
       }
 
-      const lumAlpha = alpha * Math.min(1, lum * 1.5);
+      // Alpha: full strength in bright areas, still visible in mid-tones
+      // Use a curve that keeps mid-tones visible
+      const lumCurve = Math.pow(Math.min(1, lum * 1.8), 0.6);
+      const charAlpha = strength * lumCurve;
+      if (charAlpha < 0.01) continue;
 
+      // Color
       let cr, cg, cb;
       if (colorMode === 'gold') {
         const t = Math.min(lum * 2, 1);
-        cr = Math.floor(140 + t * 72);
-        cg = Math.floor(100 + t * 68);
-        cb = Math.floor(20 + t * 55);
+        cr = Math.floor(160 + t * 52);
+        cg = Math.floor(120 + t * 48);
+        cb = Math.floor(30 + t * 45);
+      } else if (colorMode === 'hot') {
+        const t = Math.min(lum * 2, 1);
+        cr = Math.floor(180 + t * 75);
+        cg = Math.floor(140 + t * 80);
+        cb = Math.floor(40 + t * 100);
+        // Hot spots go white
+        if (lum > 0.7) {
+          const w = (lum - 0.7) / 0.3;
+          cr = Math.floor(cr + (255 - cr) * w);
+          cg = Math.floor(cg + (255 - cg) * w);
+          cb = Math.floor(cb + (255 - cb) * w);
+        }
       } else if (colorMode === 'mono') {
-        const v = Math.floor(180 + lum * 75);
+        const v = Math.floor(160 + lum * 95);
         cr = cg = cb = v;
       } else {
-        cr = Math.min(255, r + 60);
-        cg = Math.min(255, g + 60);
-        cb = Math.min(255, b + 60);
+        cr = Math.min(255, r + 80);
+        cg = Math.min(255, g + 80);
+        cb = Math.min(255, b + 80);
       }
 
-      ctx.globalAlpha = lumAlpha;
+      ctx.globalAlpha = charAlpha;
       ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
-      ctx.fillText(ch, col * cell + Math.floor(cell / 2), row * cell);
+      ctx.fillText(ch, cx, cy);
     }
   }
   ctx.globalAlpha = 1;
 }
 
-// Auto-refresh on control change
-document.querySelectorAll('input,select').forEach(el => el.addEventListener('input', render));
+function render() {
+  const orig = document.getElementById('orig');
+  const out = document.getElementById('out');
+  orig.width = orig.height = 256;
+  out.width = out.height = 256;
 
-function download() {
-  renderHires(512);
-  const a = document.createElement('a');
-  a.href = document.getElementById('hires').toDataURL('image/png');
-  a.download = 'shumi-ascii.png';
-  a.click();
+  // Original
+  const oCtx = orig.getContext('2d');
+  oCtx.clearRect(0, 0, 256, 256);
+  oCtx.drawImage(img, 0, 0, 256, 256);
+
+  // ASCII version
+  renderToCanvas(out.getContext('2d'), 256, 1);
+
+  // Update labels
+  document.getElementById('strengthVal').textContent = document.getElementById('strength').value + '%';
+  document.getElementById('cellVal').textContent = document.getElementById('cellSize').value;
+  document.getElementById('darkenVal').textContent = document.getElementById('bgDarken').value + '%';
+
+  // Previews
+  const dataUrl = out.toDataURL('image/png');
+  document.getElementById('p64').src = dataUrl;
+  document.getElementById('p36').src = dataUrl;
+  document.getElementById('p24').src = dataUrl;
 }
 
-function downloadWebP() {
-  renderHires(512);
+document.querySelectorAll('input,select').forEach(el => el.addEventListener('input', render));
+
+function download(fmt) {
+  const hires = document.getElementById('hires');
+  hires.width = hires.height = 512;
+  renderToCanvas(hires.getContext('2d'), 512, 2);
   const a = document.createElement('a');
-  a.href = document.getElementById('hires').toDataURL('image/webp', 0.95);
-  a.download = 'shumi-ascii.webp';
+  if (fmt === 'webp') {
+    a.href = hires.toDataURL('image/webp', 0.95);
+    a.download = 'shumi-ascii.webp';
+  } else {
+    a.href = hires.toDataURL('image/png');
+    a.download = 'shumi-ascii.png';
+  }
   a.click();
 }
 </script>
