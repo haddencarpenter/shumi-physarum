@@ -1292,9 +1292,17 @@ function resize() {
         VH = screenH;
     }
 
-    MSIZE = Math.floor(Math.min(VW, VH) * 0.5);
-    // On mobile, mascot needs to be bigger for the stencil to read
-    if (IS_MOBILE) MSIZE = Math.max(MSIZE, Math.floor(Math.min(screenW, screenH) * 0.60));
+    if (IS_LP) {
+        // LP: mascot proportional to width for consistent look across viewports
+        // Mobile (narrow): 60% of width for visual presence
+        // Desktop (wide): 50% of min dimension, capped at 450px
+        let pct = VW < 768 ? 0.60 : 0.50;
+        MSIZE = Math.floor(Math.min(Math.max(VW * pct, 200), 450));
+    } else {
+        MSIZE = Math.floor(Math.min(VW, VH) * 0.5);
+        // On mobile, mascot needs to be bigger for the stencil to read
+        if (IS_MOBILE) MSIZE = Math.max(MSIZE, Math.floor(Math.min(screenW, screenH) * 0.60));
+    }
 
     bgCanvas.width = VW; bgCanvas.height = VH;
     bgSimCanvas.width = VW; bgSimCanvas.height = VH;
