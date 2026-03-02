@@ -1188,10 +1188,8 @@ self.onmessage = function(e) {
                 MS.spawnRate = Math.round(70 * 0.40);
                 MS.initialBatch = Math.round(1400 * 0.40);
                 MS.trailBright = 2.4 * 1.4;
-                // Mobile LP: pixel mold instead of chunky ASCII
-                if (IS_MOBILE) {
-                    formationMode = 3;
-                }
+                // LP always uses ASCII ramp (mode 1) — no mold on any device
+                formationMode = 1;
             } else if (IS_MOBILE) {
                 BG.agentCount = Math.round(8000 * 0.60);
                 MS.agentCount = Math.round(5500 * 0.60);
