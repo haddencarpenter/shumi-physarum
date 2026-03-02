@@ -195,8 +195,8 @@ const LP_PEAK_DESKTOP = 0.55;
 const LP_PEAK_MOBILE = 0.60;
 const LP_PULSE_PERIOD = 210;         // 3.5s per breath (slightly slower for LP)
 const LP_DECAY = 420;                // ~7s half-life
-const LP_FLOOR_DESKTOP = 0.10;
-const LP_FLOOR_MOBILE = 0.15;
+const LP_FLOOR_DESKTOP = 0.25;
+const LP_FLOOR_MOBILE = 0.30;
 
 // Mask data (received from main thread)
 let maskImageData = null; // ImageData of the mascot
@@ -847,7 +847,7 @@ function handleTick() {
     if (_blastOnLoad) {
         let BLAST_HOLD = 60;
         let BLAST_FADE = 150;
-        let TARGET_BOOST = 1.0;
+        let TARGET_BOOST = IS_LP ? 2.5 : 1.0;
         if (msFc <= BLAST_HOLD) {
             // hold at blast
         } else if (msFc <= BLAST_HOLD + BLAST_FADE) {
