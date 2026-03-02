@@ -15,10 +15,10 @@ Intricate, tightly-woven networks with fine branching.
 
 | Seed | Character | Try It |
 |------|-----------|--------|
-| 12345 | The default, balanced radial growth | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
-| 7777 | Symmetrical burst pattern | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
-| 42069 | Heavy branching with wide spread | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
-| 31415 | Pi seed, elegant spiral tendencies | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
+| 12345 | The default, balanced radial growth | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=12345) |
+| 7777 | Symmetrical burst pattern | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=7777) |
+| 42069 | Heavy branching with wide spread | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=42069) |
+| 31415 | Pi seed, elegant spiral tendencies | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=31415) |
 
 ### Bold Branches
 
@@ -26,9 +26,9 @@ High-contrast directional patterns pulled by attractor placement.
 
 | Seed | Character | Try It |
 |------|-----------|--------|
-| 88888 | Strong east-west branching | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
-| 55555 | Three dominant arms | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
-| 99999 | Asymmetric reach, one bold tendril | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
+| 88888 | Strong east-west branching | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=88888) |
+| 55555 | Three dominant arms | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=55555) |
+| 99999 | Asymmetric reach, one bold tendril | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=99999) |
 
 ### Minimal & Clean
 
@@ -36,9 +36,9 @@ Sparse, elegant topologies with lots of negative space.
 
 | Seed | Character | Try It |
 |------|-----------|--------|
-| 1 | The simplest seed, pure origin | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
-| 100 | Clean radial with even distribution | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
-| 2025 | Current year seed | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) |
+| 1 | The simplest seed, pure origin | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=1) |
+| 100 | Clean radial with even distribution | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=100) |
+| 2025 | Current year seed | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html?seed=2025) |
 
 ## Stencil Seeds
 
@@ -71,13 +71,13 @@ In the Masked, seeds control everything: palette, texture, and color drift. Thes
 
 | Seed | Palette | Texture | Character | Try It |
 |------|---------|---------|-----------|--------|
-| 1 | Ember | Standard | Warm gold baseline | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
-| 3 | Pearl | Standard | Minimal gray elegance | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
-| 9 | Frost | Crystalline | Sharp blue-white veins | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
-| 22 | Moss | Smoke | Soft green mist | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
-| 37 | Bloom | Electric | Hot pink lightning | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
-| 52 | Pearl | Flow | Silver lava lamp | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
-| 63 | Rust | Spore | Copper constellation map | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
+| 1 | Ember | Standard | Warm gold baseline | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html?seed=1) |
+| 3 | Pearl | Standard | Minimal gray elegance | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html?seed=3) |
+| 9 | Frost | Crystalline | Sharp blue-white veins | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html?seed=9) |
+| 22 | Moss | Smoke | Soft green mist | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html?seed=22) |
+| 37 | Bloom | Electric | Hot pink lightning | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html?seed=37) |
+| 52 | Pearl | Flow | Silver lava lamp | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html?seed=52) |
+| 63 | Rust | Spore | Copper constellation map | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html?seed=63) |
 
 ## Palette Showcase
 

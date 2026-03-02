@@ -1149,7 +1149,12 @@
         init();
     }
 
-    window.addEventListener('load', () => updateSeedDisplay());
+    window.addEventListener('load', () => {
+        let _sp = new URLSearchParams(window.location.search);
+        let _urlSeed = _sp.get('seed');
+        if (_urlSeed) { let v = parseInt(_urlSeed); if (v > 0) P.seed = v; }
+        updateSeedDisplay();
+    });
 
     // ═══════════════════════════════════════════════════════════════
     //  BATCH FULLSCREEN 1080p RECORD — all 9 seeds, one click

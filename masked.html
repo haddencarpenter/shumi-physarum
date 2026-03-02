@@ -324,7 +324,7 @@ const MS = {
     initialBatch: 800,
 };
 
-let seed = Math.floor(Math.random() * 999999) + 1;
+let seed = (() => { let s = new URLSearchParams(window.location.search).get('seed'); return s && parseInt(s) > 0 ? parseInt(s) : Math.floor(Math.random() * 999999) + 1; })();
 
 // ═══════════════════════════════════════════════════════════════
 //  STATE
