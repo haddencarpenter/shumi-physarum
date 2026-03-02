@@ -11,14 +11,14 @@
   </div>
   <div>
     <h3>ASCII Overlay</h3>
-    <canvas id="out" width="256" height="256" style="border:1px solid #333"></canvas>
+    <canvas id="out" width="256" height="256" style="border:1px solid #333;background:repeating-conic-gradient(#222 0% 25%, #111 0% 50%) 0 0/16px 16px"></canvas>
   </div>
   <div>
     <h3>Preview sizes</h3>
     <div style="display:flex;gap:12px;align-items:end">
-      <div><img id="p64" style="width:64px;height:64px;border:1px solid #333;border-radius:6px"><br><small>64px</small></div>
-      <div><img id="p36" style="width:36px;height:36px;border:1px solid #333;border-radius:4px"><br><small>36px</small></div>
-      <div><img id="p24" style="width:24px;height:24px;border:1px solid #333;border-radius:3px"><br><small>24px</small></div>
+      <div><img id="p64" style="width:64px;height:64px;border:1px solid #333;border-radius:6px;background:#0e0c09"><br><small>64px</small></div>
+      <div><img id="p36" style="width:36px;height:36px;border:1px solid #333;border-radius:4px;background:#0e0c09"><br><small>36px</small></div>
+      <div><img id="p24" style="width:24px;height:24px;border:1px solid #333;border-radius:3px;background:#0e0c09"><br><small>24px</small></div>
     </div>
   </div>
 </div>
@@ -73,27 +73,26 @@ function renderToCanvas(ctx, SIZE, cellScale) {
   const rampMode = document.getElementById('rampMode').value;
   const ramp = RAMPS[rampMode];
 
-  // Step 1: Draw original image
+  // Step 1: Draw original image and darken opaque pixels (preserve alpha)
   ctx.drawImage(img, 0, 0, SIZE, SIZE);
+  const baseData = ctx.getImageData(0, 0, SIZE, SIZE);
+  const origData = new Uint8ClampedArray(baseData.data); // copy for luminance sampling
+  const darkMult = 1 - bgDarken;
+  for (let i = 0; i < baseData.data.length; i += 4) {
+    baseData.data[i]   = Math.floor(baseData.data[i] * darkMult);
+    baseData.data[i+1] = Math.floor(baseData.data[i+1] * darkMult);
+    baseData.data[i+2] = Math.floor(baseData.data[i+2] * darkMult);
+    // alpha unchanged — transparency preserved
+  }
+  ctx.putImageData(baseData, 0, 0);
 
-  // Step 2: Darken the base image so ASCII pops
-  ctx.globalCompositeOperation = 'multiply';
-  const darkLevel = Math.floor(255 * (1 - bgDarken));
-  ctx.fillStyle = `rgb(${darkLevel},${darkLevel},${darkLevel})`;
-  ctx.fillRect(0, 0, SIZE, SIZE);
-  ctx.globalCompositeOperation = 'source-over';
-
-  // Get pixel data from the ORIGINAL (not darkened) for luminance sampling
-  const tmpCanvas = document.createElement('canvas');
-  tmpCanvas.width = tmpCanvas.height = SIZE;
-  const tmpCtx = tmpCanvas.getContext('2d');
-  tmpCtx.drawImage(img, 0, 0, SIZE, SIZE);
-  const origData = tmpCtx.getImageData(0, 0, SIZE, SIZE).data;
-
-  // Step 3: Draw ASCII characters
-  ctx.font = `bold ${Math.max(cell - 1, 2)}px 'Courier New', monospace`;
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'center';
+  // Step 3: Draw ASCII onto temp canvas, then mask by original alpha
+  const asciiCanvas = document.createElement('canvas');
+  asciiCanvas.width = asciiCanvas.height = SIZE;
+  const aCtx = asciiCanvas.getContext('2d');
+  aCtx.font = `bold ${Math.max(cell - 1, 2)}px 'Courier New', monospace`;
+  aCtx.textBaseline = 'middle';
+  aCtx.textAlign = 'center';
 
   const cols = Math.floor(SIZE / cell);
   const rows = Math.floor(SIZE / cell);
@@ -112,7 +111,6 @@ function renderToCanvas(ctx, SIZE, cellScale) {
 
       const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 
-      // Pick character
       let ch;
       if (rampMode === 'code') {
         const hash = (row * 137 + col * 251 + row * col * 3) % CODE_CHARS.length;
@@ -123,13 +121,10 @@ function renderToCanvas(ctx, SIZE, cellScale) {
         if (ch === ' ') continue;
       }
 
-      // Alpha: full strength in bright areas, still visible in mid-tones
-      // Use a curve that keeps mid-tones visible
       const lumCurve = Math.pow(Math.min(1, lum * 1.8), 0.6);
       const charAlpha = strength * lumCurve;
       if (charAlpha < 0.01) continue;
 
-      // Color
       let cr, cg, cb;
       if (colorMode === 'gold') {
         const t = Math.min(lum * 2, 1);
@@ -141,7 +136,6 @@ function renderToCanvas(ctx, SIZE, cellScale) {
         cr = Math.floor(180 + t * 75);
         cg = Math.floor(140 + t * 80);
         cb = Math.floor(40 + t * 100);
-        // Hot spots go white
         if (lum > 0.7) {
           const w = (lum - 0.7) / 0.3;
           cr = Math.floor(cr + (255 - cr) * w);
@@ -157,12 +151,23 @@ function renderToCanvas(ctx, SIZE, cellScale) {
         cb = Math.min(255, b + 80);
       }
 
-      ctx.globalAlpha = charAlpha;
-      ctx.fillStyle = `rgb(${cr},${cg},${cb})`;
-      ctx.fillText(ch, cx, cy);
+      aCtx.globalAlpha = charAlpha;
+      aCtx.fillStyle = `rgb(${cr},${cg},${cb})`;
+      aCtx.fillText(ch, cx, cy);
     }
   }
-  ctx.globalAlpha = 1;
+  aCtx.globalAlpha = 1;
+
+  // Mask ASCII layer by original alpha — clip to silhouette
+  const asciiData = aCtx.getImageData(0, 0, SIZE, SIZE);
+  for (let i = 0; i < asciiData.data.length; i += 4) {
+    const origAlpha = origData[i + 3];
+    asciiData.data[i + 3] = Math.min(asciiData.data[i + 3], origAlpha);
+  }
+  aCtx.putImageData(asciiData, 0, 0);
+
+  // Composite ASCII on top of darkened base
+  ctx.drawImage(asciiCanvas, 0, 0);
 }
 
 function render() {
