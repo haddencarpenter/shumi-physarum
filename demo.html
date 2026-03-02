@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shumi — Landing Page Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: oklch(0.06 0.01 50);
+    --fg: oklch(0.95 0.01 80);
+    --primary: oklch(0.82 0.16 85);
+    --primary-fg: oklch(0.06 0.01 50);
+    --muted: oklch(0.58 0.02 60);
+    --border: oklch(0.2 0.015 50);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: 'DM Sans', system-ui, sans-serif; overflow-x: hidden; }
+
+  /* Header */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px;
+    background: oklch(0.06 0.01 50 / 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+  .logo img { width: 32px; height: 32px; }
+  nav { display: flex; gap: 24px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; }
+  nav a:hover { color: var(--fg); }
+  .launch-btn {
+    background: var(--primary); color: var(--primary-fg);
+    border: none; border-radius: 8px; padding: 8px 20px;
+    font-weight: 600; font-size: 14px; cursor: pointer;
+  }
+
+  /* Hero */
+  .hero { position: relative; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* Physarum iframe */
+  .physarum-bg { position: absolute; inset: 0; z-index: 0; }
+  .physarum-bg iframe { width: 100%; height: 100%; border: 0; }
+
+  /* Gradient shields */
+  .shield-desktop {
+    position: absolute; inset: 0; pointer-events: none; z-index: 5;
+    background: radial-gradient(ellipse 80% 45% at 50% 65%, var(--bg) 0%, var(--bg) 35%, oklch(0.06 0.01 50 / 0.95) 55%, transparent 90%);
+  }
+  .shield-mobile {
+    position: absolute; inset: 0; pointer-events: none; z-index: 5; display: none;
+    background: linear-gradient(to bottom, transparent 42%, oklch(0.06 0.01 50 / 0.92) 52%, var(--bg) 60%, var(--bg) 100%);
+  }
+  .bottom-fade {
+    position: absolute; left: 0; right: 0; bottom: 0; pointer-events: none; z-index: 10;
+    height: 40vh;
+    background: linear-gradient(to bottom, transparent 0%, var(--bg) 60%);
+  }
+
+  /* Content */
+  .hero-content {
+    position: relative; z-index: 20; flex: 1; display: flex; flex-direction: column;
+    justify-content: flex-end; padding-bottom: 24px; pointer-events: none;
+  }
+  .hero-inner { margin: 0 auto; max-width: 56rem; text-align: center; padding: 0 16px; padding-top: 50vh; }
+
+  /* Badge */
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid oklch(0.82 0.16 85 / 0.2);
+    background: oklch(0.82 0.16 85 / 0.1);
+    border-radius: 9999px; padding: 8px 20px; margin-bottom: 20px;
+    pointer-events: auto; backdrop-filter: blur(4px);
+  }
+  .badge svg { width: 16px; height: 16px; color: var(--primary); }
+  .badge span { font-size: 14px; font-weight: 500; color: var(--primary); letter-spacing: 0.025em; }
+
+  /* Headline */
+  h1 {
+    font-size: clamp(2.25rem, 6vw, 4.5rem);
+    font-weight: 700; line-height: 1.1; letter-spacing: -0.02em;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 12px oklch(0.06 0.01 50 / 0.6);
+  }
+  .text-shimmer {
+    background: linear-gradient(90deg, var(--primary) 0%, oklch(0.92 0.12 75) 50%, var(--primary) 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear 2;
+  }
+  @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+
+  /* Body copy */
+  .body-copy {
+    max-width: 36rem; margin: 0 auto 24px;
+    font-size: clamp(0.875rem, 2vw, 1.125rem);
+    color: var(--muted); line-height: 1.6;
+    text-shadow: 0 1px 8px oklch(0.06 0.01 50 / 0.5);
+  }
+
+  /* Buttons */
+  .cta-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; pointer-events: auto; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--primary); color: var(--primary-fg);
+    border: none; border-radius: 8px; padding: 12px 32px;
+    font-size: 16px; font-weight: 600; cursor: pointer;
+    text-decoration: none;
+  }
+  .btn-primary:hover { filter: brightness(0.9); }
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: oklch(0 0 0 / 0.2); color: oklch(0.95 0.01 80 / 0.7);
+    border: 1px solid oklch(0.95 0.01 80 / 0.3);
+    border-radius: 8px; padding: 12px 24px;
+    font-size: 16px; font-weight: 500; cursor: pointer;
+    backdrop-filter: blur(8px); text-decoration: none;
+  }
+  .btn-outline:hover { color: var(--fg); border-color: oklch(0.95 0.01 80 / 0.6); }
+
+  /* Trust indicators */
+  .trust {
+    margin-top: 24px; display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 24px 24px; font-size: 14px; color: var(--muted);
+    backdrop-filter: blur(8px); background: oklch(0 0 0 / 0.2);
+    border-radius: 8px; padding: 8px 16px;
+  }
+  .trust-item { display: flex; align-items: center; gap: 8px; }
+  .trust-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); }
+
+  /* Reveal animation */
+  @keyframes reveal-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+  .reveal { opacity: 0; animation: reveal-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  .reveal-d1 { animation-delay: 0.1s; }
+  .reveal-d2 { animation-delay: 0.2s; }
+  .reveal-d3 { animation-delay: 0.3s; }
+  .reveal-d4 { animation-delay: 0.4s; }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    .shield-desktop { display: none; }
+    .shield-mobile { display: block; }
+    nav { display: none; }
+    .launch-btn { display: none; }
+    .hero-inner { padding-top: 45vh; }
+    .hero-content { padding-bottom: 16px; }
+    h1 { font-size: 2.25rem; }
+    .trust { gap: 12px 16px; }
+  }
+  @media (min-width: 1024px) {
+    .hero-content { padding-bottom: 40px; }
+    .hero-inner { padding: 0 32px; padding-top: 50vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <img src="https://haddencarpenter.github.io/shumi-physarum/stencil.html?lp" style="display:none">
+    <span style="font-size:24px">&#127812;</span>
+    <span>Shumi</span>
+  </div>
+  <nav>
+    <a href="#">Features</a>
+    <a href="#">How It Works</a>
+  </nav>
+  <button class="launch-btn">Launch App</button>
+</header>
+
+<section class="hero">
+  <div class="physarum-bg">
+    <iframe
+      src="stencil.html?lp&seed=60&es=0.57&ew=0.28"
+      allow="autoplay"
+      sandbox="allow-scripts allow-same-origin"
+      loading="eager"
+      title="Shumi Physarum"
+    ></iframe>
+  </div>
+
+  <div class="shield-desktop"></div>
+  <div class="shield-mobile"></div>
+  <div class="bottom-fade"></div>
+
+  <div class="hero-content">
+    <div class="hero-inner">
+      <div class="badge reveal">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+        <span>Your AI Crypto Analyst</span>
+      </div>
+
+      <h1 class="reveal reveal-d1">
+        Stop Guessing.<br>
+        <span class="text-shimmer">Start Knowing.</span>
+      </h1>
+
+      <p class="body-copy reveal reveal-d2">
+        Shumi crunches billions of data points across 15,000+ cryptocurrencies
+        and 1,700+ exchanges &mdash; price, trend, sentiment, and futures data in one answer.
+      </p>
+
+      <div class="cta-row reveal reveal-d3">
+        <a href="#" class="btn-primary">
+          Ask Shumi Now
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+        <a href="#" class="btn-outline">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+          Watch Demo
+        </a>
+      </div>
+
+      <div class="trust reveal reveal-d4">
+        <div class="trust-item"><div class="trust-dot"></div><span>No KYC Required</span></div>
+        <div class="trust-item"><div class="trust-dot"></div><span>Non-Custodial</span></div>
+        <div class="trust-item"><div class="trust-dot"></div><span>100% Independent</span></div>
+        <div class="trust-item"><div class="trust-dot"></div><span>Free to Start</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
