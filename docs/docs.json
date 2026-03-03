@@ -11,10 +11,6 @@
   "navigation": {
     "groups": [
       {
-        "group": "Home",
-        "pages": ["introduction"]
-      },
-      {
         "group": "Physarum Simulators",
         "pages": [
           "physarum/overview",
@@ -39,6 +35,9 @@
       }
     ]
   },
+  "redirects": [
+    { "source": "/", "destination": "/physarum/overview" }
+  ],
   "navbar": {
     "links": [
       { "label": "Live Demo", "href": "https://haddencarpenter.github.io/shumi-physarum/demo.html" }
