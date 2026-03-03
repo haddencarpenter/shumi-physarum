@@ -1,60 +1,49 @@
 ---
-title: "The Shumi Visual System"
-description: "A suite of three biomimetic swarm simulators for the Shumi agent visual identity."
+title: "Shumi Physarum"
+description: "Three iterations of a biomimetic swarm simulator — from open sandbox to identity engine."
 ---
 
-![Shumi Swarm](/og-thumbnail.png)
+![Shumi Physarum](/og-thumbnail.png)
 
-**Design how your Shumi agent sees the world.**
+Three simulators built on the same physarum transport network engine. Each iteration added a layer of structure on top of the raw swarm simulation.
 
-The Shumi Visual System is a suite of three simulators built on biomimetic network intelligence, the same decentralized architecture that mycelial networks use to solve routing and resource allocation in nature. Together they form the visual identity toolkit for the Shumi agent ecosystem.
+## The Three Iterations
 
-## The Three Simulators
+### [v1 — The Generator](generator) (`index.html`)
 
-### [The Generator](generator) (`index.html`)
+The original sandbox. 14 sliders, 8 color presets, and a recording studio for batch exports. Full manual control over every swarm parameter — speed, sensor distance, decay, diffusion, attractors. Exports PNG, WebM, GIF, and fullscreen 1080p.
 
-The full-control laboratory. 14 sliders, 8 color presets, and a recording studio for batch exports. Tweak every parameter, preview seeds, and export PNG, WebM, GIF, or fullscreen 1080p clips.
+**Best for:** Exploration, custom parameter tuning, batch recording.
 
-**Best for:** Exploration, custom parameter tuning, batch recording, GIF avatars.
+### [v2 — The Masked](masked) (`masked.html`)
 
-### [The Stencil](stencil) (`stencil.html`)
+Deterministic seed explorer. Each seed auto-selects from 8 palettes and 8 texture profiles with per-seed color drift. Minimal UI — just click through seeds to discover personalities. The swarm grows through the mascot shape using edge detection and density mapping.
 
-The identity engine. Layers physarum behind the Shumi mascot using four formation modes (Ramp, Code, Mold, and Hybrid), each rendering the swarm as ASCII art or pixel density. A full settings panel lets you fine-tune edge detection, stencil opacity, and colony behavior. Includes a shareable URL system.
+**Best for:** Discovering seed personalities, quick visual identity browsing.
 
-**Best for:** Agent avatars, landing page hero backgrounds, social content, shareable links.
+### [v3 — The Stencil](stencil) (`stencil.html`)
 
-### [The Masked](masked) (`masked.html`)
+Identity engine. Layers physarum behind the mascot using four formation modes (Ramp, Code, Mold, Hybrid), each rendering the swarm as ASCII art or pixel density. Full settings panel, shareable URL system, and Web Worker rendering for performance.
 
-The seed explorer. Minimal UI with just three buttons. Each seed deterministically selects from 8 palettes and 8 texture profiles, with per-seed color drift for infinite variation. The swarm grows through the mascot shape using edge detection and density mapping.
+**Best for:** Agent avatars, social content, shareable identity links.
 
-**Best for:** Discovering seed personalities, quick visual identity exploration, ambient display.
+## Shared Engine
 
-## Shared DNA
+All three simulators share the same underlying physics:
 
-All three simulators share the same underlying engine:
-
-- **Deterministic seeds.** Same seed produces consistent (but visually distinct) results across all three versions.
-- **Biomimetic network engine.** Autonomous agents sense, navigate, and build signal pathways.
+- **Deterministic seeds.** Same seed → consistent results across all three versions.
+- **Biomimetic transport network.** Autonomous agents sense, navigate, and build signal pathways.
 - **Signal memory.** Decay and propagation create self-organizing network structures.
 - **PNG and WebM export.** Every version can capture stills and video.
 
 ## Quick Links
 
-| | Generator | Stencil | Masked |
+| | Generator (v1) | Masked (v2) | Stencil (v3) |
 |---|---|---|---|
-| **Live** | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) | [Open →](https://haddencarpenter.github.io/shumi-physarum/stencil.html) | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) |
-| **Docs** | [Generator](generator) | [Stencil](stencil) | [Masked](masked) |
-| **UI** | Full sidebar, 14 sliders | Settings panel + mode buttons | 3 buttons |
-| **Export** | PNG, WebM, GIF, 1080p | PNG, WebM, Share URL | PNG, WebM |
-
-## The Shumi Agent Identity
-
-These swarm patterns are the visual identity system for the Shumi agent collection. Every agent carries a unique swarm pattern that represents its swarm topology.
-
-The Stencil is the current form: the bridge between raw swarm simulation and the agent's final visual identity. It takes the organic physics of the Generator and shapes them around the mascot, creating compositions where the swarm grows through the form.
+| **Live** | [Open →](https://haddencarpenter.github.io/shumi-physarum/index.html) | [Open →](https://haddencarpenter.github.io/shumi-physarum/masked.html) | [Open →](https://haddencarpenter.github.io/shumi-physarum/stencil.html) |
+| **Docs** | [Generator](generator) | [Masked](masked) | [Stencil](stencil) |
+| **Status** | Legacy (p5.js) | Legacy (p5.js) | Active |
+| **UI** | Full sidebar, 14 sliders | 3 buttons | Settings panel + mode buttons |
+| **Export** | PNG, WebM, GIF, 1080p | PNG, WebM | PNG, WebM, Share URL |
 
 No installation. No build step. No dependencies. Just open and explore.
-
-## Shumi AI
-
-The visual system is part of the broader [Shumi](https://shumi.ai) ecosystem, an AI-powered crypto analysis platform. The swarm patterns you create here become the visual identity layer for Shumi agents.
