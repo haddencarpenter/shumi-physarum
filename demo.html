@@ -16,70 +16,85 @@
     font-family: 'Courier New', monospace;
     min-height: 100vh;
     display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 40px 16px;
+    align-items: center;
+    padding: 0 24px 60px;
+  }
+
+  /* Hero canvas */
+  #hero-canvas {
+    width: 100%;
+    max-width: 1200px;
+    height: 340px;
+    border-radius: 0 0 8px 8px;
+    margin-bottom: 32px;
   }
 
   h1 {
-    color: #D4A84B; font-size: 20px; letter-spacing: 2px;
+    color: #D4A84B; font-size: 28px; letter-spacing: 3px;
     text-transform: uppercase; text-align: center;
+    margin-top: 48px;
     margin-bottom: 8px;
   }
   .subtitle {
-    color: #666; font-size: 12px; text-align: center;
-    margin-bottom: 40px;
+    color: #666; font-size: 14px; text-align: center;
+    margin-bottom: 32px;
   }
 
   .cards {
-    display: flex; gap: 20px;
-    max-width: 900px; width: 100%;
+    display: flex; gap: 24px;
+    max-width: 1200px; width: 100%;
   }
 
   .card {
     flex: 1;
-    border: 1px solid #222; border-radius: 4px;
-    padding: 24px 20px;
+    border: 1px solid #222; border-radius: 6px;
+    padding: 32px 28px;
     background: rgba(26,26,26,0.6);
     display: flex; flex-direction: column;
   }
   .card:hover { border-color: #D4A84B; }
 
   .card .version {
-    color: #D4A84B; font-size: 10px; letter-spacing: 2px;
-    text-transform: uppercase; margin-bottom: 8px;
+    color: #D4A84B; font-size: 11px; letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 10px;
   }
   .card h2 {
-    color: #ccc; font-size: 16px; font-weight: 700;
-    margin-bottom: 10px;
+    color: #ccc; font-size: 20px; font-weight: 700;
+    margin-bottom: 12px;
   }
   .card p {
-    color: #777; font-size: 12px; line-height: 1.6;
-    margin-bottom: 16px; flex: 1;
+    color: #777; font-size: 14px; line-height: 1.7;
+    margin-bottom: 20px; flex: 1;
   }
   .card .open-link {
     display: inline-block;
     color: #D4A84B; text-decoration: none;
-    font-size: 12px; font-weight: 700;
-    border: 1px solid #D4A84B; border-radius: 2px;
-    padding: 6px 16px;
+    font-size: 14px; font-weight: 700;
+    border: 1px solid #D4A84B; border-radius: 3px;
+    padding: 10px 24px;
     text-align: center;
+    transition: all 0.2s;
   }
   .card .open-link:hover {
     background: #D4A84B; color: #0D0D0D;
   }
 
   .story {
-    max-width: 640px; text-align: center;
-    margin-top: 40px;
-    color: #555; font-size: 11px; line-height: 1.8;
+    max-width: 800px; text-align: center;
+    margin-top: 48px;
+    color: #555; font-size: 13px; line-height: 1.8;
   }
 
-  @media (max-width: 640px) {
+  @media (max-width: 700px) {
     .cards { flex-direction: column; }
+    #hero-canvas { height: 200px; }
+    h1 { font-size: 22px; margin-top: 32px; }
   }
 </style>
 </head>
 <body>
+
+<canvas id="hero-canvas"></canvas>
 
 <h1>Shumi Physarum</h1>
 <p class="subtitle">three iterations of the same swarm engine</p>
@@ -111,5 +126,122 @@
   Started as an open parameter sandbox (Generator), then added deterministic seed-to-palette mapping (Masked), then shaped the swarm around a mascot stencil (Stencil). Next step: agent avatar system — each agent carries a unique swarm identity.
 </p>
 
+<script>
+(function() {
+  const canvas = document.getElementById('hero-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, agents, trail, fc = 0;
+
+  const P = {
+    count: 4000, speed: 2.4, sensorDist: 18, sensorAngle: 40 * Math.PI / 180,
+    turnSpeed: 20 * Math.PI / 180, deposit: 10, decay: 0.965, diffusion: 0.2
+  };
+
+  const colors = [
+    [26, 20, 8],    // trail base
+    [212, 168, 75], // trail bright
+    [217, 119, 87]  // hot
+  ];
+
+  function resize() {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    W = Math.floor(rect.width * dpr * 0.5);
+    H = Math.floor(rect.height * dpr * 0.5);
+    canvas.width = W;
+    canvas.height = H;
+    trail = new Float32Array(W * H);
+    spawnAgents();
+  }
+
+  function spawnAgents() {
+    agents = [];
+    const cx = W / 2, cy = H / 2;
+    for (let i = 0; i < P.count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const r = Math.random() * Math.min(W, H) * 0.15;
+      agents.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, h: a + Math.PI });
+    }
+  }
+
+  function sample(x, y) {
+    const ix = Math.floor(x), iy = Math.floor(y);
+    if (ix < 0 || ix >= W || iy < 0 || iy >= H) return 0;
+    return trail[iy * W + ix];
+  }
+
+  function step() {
+    for (const ag of agents) {
+      const sL = sample(ag.x + Math.cos(ag.h - P.sensorAngle) * P.sensorDist,
+                         ag.y + Math.sin(ag.h - P.sensorAngle) * P.sensorDist);
+      const sC = sample(ag.x + Math.cos(ag.h) * P.sensorDist,
+                         ag.y + Math.sin(ag.h) * P.sensorDist);
+      const sR = sample(ag.x + Math.cos(ag.h + P.sensorAngle) * P.sensorDist,
+                         ag.y + Math.sin(ag.h + P.sensorAngle) * P.sensorDist);
+
+      if (sC >= sL && sC >= sR) { /* straight */ }
+      else if (sC < sL && sC < sR) ag.h += (Math.random() < 0.5 ? 1 : -1) * P.turnSpeed;
+      else if (sL > sR) ag.h -= P.turnSpeed;
+      else ag.h += P.turnSpeed;
+
+      ag.h += (Math.random() - 0.5) * 0.08;
+      ag.x += Math.cos(ag.h) * P.speed;
+      ag.y += Math.sin(ag.h) * P.speed;
+
+      if (ag.x < 0) ag.x += W; if (ag.x >= W) ag.x -= W;
+      if (ag.y < 0) ag.y += H; if (ag.y >= H) ag.y -= H;
+
+      const ix = Math.floor(ag.x), iy = Math.floor(ag.y);
+      if (ix >= 0 && ix < W && iy >= 0 && iy < H)
+        trail[iy * W + ix] = Math.min(trail[iy * W + ix] + P.deposit, 255);
+    }
+
+    // Decay + simple diffusion
+    const next = new Float32Array(W * H);
+    for (let y = 1; y < H - 1; y++) {
+      for (let x = 1; x < W - 1; x++) {
+        const i = y * W + x;
+        const avg = (trail[i - 1] + trail[i + 1] + trail[i - W] + trail[i + W]) * 0.25;
+        next[i] = (trail[i] * (1 - P.diffusion) + avg * P.diffusion) * P.decay;
+      }
+    }
+    trail = next;
+  }
+
+  function render() {
+    const img = ctx.createImageData(W, H);
+    const d = img.data;
+    for (let i = 0; i < W * H; i++) {
+      const v = trail[i] / 255;
+      const t = Math.min(v * 1.8, 1);
+      let r, g, b;
+      if (t < 0.5) {
+        const f = t * 2;
+        r = colors[0][0] + (colors[1][0] - colors[0][0]) * f;
+        g = colors[0][1] + (colors[1][1] - colors[0][1]) * f;
+        b = colors[0][2] + (colors[1][2] - colors[0][2]) * f;
+      } else {
+        const f = (t - 0.5) * 2;
+        r = colors[1][0] + (colors[2][0] - colors[1][0]) * f;
+        g = colors[1][1] + (colors[2][1] - colors[1][1]) * f;
+        b = colors[1][2] + (colors[2][2] - colors[1][2]) * f;
+      }
+      const p = i * 4;
+      d[p] = r; d[p + 1] = g; d[p + 2] = b; d[p + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function loop() {
+    step();
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+  loop();
+})();
+</script>
 </body>
 </html>
