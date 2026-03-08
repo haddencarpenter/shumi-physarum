@@ -41,3 +41,9 @@ LP-specific overrides (food placement, core suppression, agent counts) are baked
 1. **If a previous session left uncommitted changes**, read the diff before continuing. Do not discard work.
 2. **If you hit a context limit mid-task**, summarize progress and next steps in a commit message so the next session can pick up cleanly.
 3. **LP mode is production; normal mode is dev tooling.** Both must work, but LP mode regressions are production incidents.
+
+## Session-Discovered Failure Modes
+
+<!-- Entries below are appended automatically by the SessionEnd hook when a session -->
+<!-- encounters and resolves a novel failure mode not already documented above. -->
+<!-- Periodically promote recurring entries into the "Common Failure Modes" section. -->
