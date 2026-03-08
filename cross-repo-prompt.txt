@@ -1,0 +1,11 @@
+Read any project docs (.council-goals, README, etc) to understand this repo's architecture, tech stack, and real failure modes. Then:
+
+1. Create AGENTS.md (under 25 lines, no prose — every line is an instruction or diagnostic action):
+   - One-line repo context: active files, what's legacy, what infra exists
+   - "Failure Modes" section: 3-5 bullets covering THIS repo's actual bug patterns. Format: symptom → where to look → what not to do
+   - "Handoff" section: uncommitted changes rule, context-limit rule, promotion rule for session-discovered entries
+   - "Session-Discovered Failure Modes" section (empty, with HTML comment explaining it's auto-appended by Stop hook)
+
+2. Create .claude/settings.json with a Stop hook that reviews the session for novel failure modes not already in AGENTS.md, appends them to the Session-Discovered section, and commits with message "docs: capture session-discovered failure mode". Do nothing if no novel failure mode was found.
+
+3. Run /simplify to review the result before committing.
